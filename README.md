@@ -1,8 +1,8 @@
 # Palmetto Heat
 
-[![make.fun — gta6-01](https://img.shields.io/badge/make.fun-gta6--01-orange?style=flat-square)](https://make.fun/c/gta6-01)
-[![Prize pool $1,666](https://img.shields.io/badge/prize-%241%2C666-gold?style=flat-square)](https://make.fun/c/gta6-01)
-[![Open-world crime game](https://img.shields.io/badge/Palmetto%20Heat-open%20world-teal?style=flat-square)](https://skipperchen0224.github.io/makefun-gta6/game/index.html)
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/skipperchen0224/makefun-gta6/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/skipperchen0224/makefun-gta6/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
 An open-world crime game in the spirit of GTA 6, built with three.js — an
 original city, original characters, original story. No Rockstar assets, no
