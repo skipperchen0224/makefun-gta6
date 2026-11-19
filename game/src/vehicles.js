@@ -99,13 +99,30 @@ export function createVehicle(scene, opts = {}) {
 }
 
 export function createTraffic(scene, city, count = 15) {
+  // Roads run on lines x/z = -200,-160,...,160,200; buildings sit at block
+  // centers, so traffic must spawn ON a road line with a heading along it,
+  // or it spawns inside a building and crashes forever.
+  const roadCoords = [-200, -160, -120, -80, -40, 0, 40, 80, 120, 160, 200];
+
+  function spawnRoadSpawn() {
+    const r = roadCoords[Math.floor(Math.random() * roadCoords.length)];
+    let x, z, heading;
+    if (Math.random() < 0.5) {
+      x = r;
+      z = (Math.random() - 0.5) * 380; // range [-190, 190]
+      heading = Math.random() < 0.5 ? 0 : Math.PI;
+    } else {
+      z = r;
+      x = (Math.random() - 0.5) * 380; // range [-190, 190]
+      heading = Math.random() < 0.5 ? Math.PI / 2 : -Math.PI / 2;
+    }
+    return { x, z, heading };
+  }
+
   const cars = [];
   for (let i = 0; i < count; i++) {
-    const road = city.roads[Math.floor(Math.random() * city.roads.length)];
-    const x = road.x + (Math.random() - 0.5) * 20;
-    const z = road.z + (Math.random() - 0.5) * 20;
-    const heading = Math.random() * Math.PI * 2;
-    const car = createVehicle(scene, { x, y: 0, z, heading });
+    const spawn = spawnRoadSpawn();
+    const car = createVehicle(scene, { x: spawn.x, y: 0, z: spawn.z, heading: spawn.heading });
     cars.push(car);
   }
 
@@ -114,12 +131,17 @@ export function createTraffic(scene, city, count = 15) {
     update(dt, playerPos) {
       cars.forEach(car => {
         car.update(dt, { forward: true }, city.colliders);
-        // Loop traffic if too far from player
-        if (car.pos.distanceTo(playerPos) > 250) {
-          const road = city.roads[Math.floor(Math.random() * city.roads.length)];
-          car.group.position.set(road.x, 0, road.z);
-        }
       });
+
+      // Respawn far-away cars on a fresh road line. Heading lives inside
+      // createVehicle with no setter, so respawn recreates the car.
+      for (let i = 0; i < cars.length; i++) {
+        if (cars[i].pos.distanceTo(playerPos) > 250) {
+          cars[i].destroy();
+          const spawn = spawnRoadSpawn();
+          cars[i] = createVehicle(scene, { x: spawn.x, y: 0, z: spawn.z, heading: spawn.heading });
+        }
+      }
     }
   };
 }

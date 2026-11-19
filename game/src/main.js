@@ -134,16 +134,14 @@ document.getElementById('wastedBtn')?.addEventListener('click', () => {
 if (shotName) {
   if (shotName === 'start') {
     setGameState('title');
-    camera.position.set(city.spawn.x + 20, 50, city.spawn.z + 40);
-    camera.lookAt(city.spawn);
+    camera.position.set(60, 35, 235);
+    camera.lookAt(new THREE.Vector3(0, 5, 100));
   } else if (shotName === 'play') {
     setGameState('play');
-    if (traffic.list.length > 0) {
-      currentCar = traffic.list[0];
-      inCar = true;
-      playerMesh.visible = false;
-      player.pos.copy(currentCar.pos);
-    }
+    currentCar = createVehicle(scene, {x: 0, y: 0, z: 170, heading: 0, color: 0xffaa00});
+    inCar = true;
+    playerMesh.visible = false;
+    player.pos.copy(currentCar.pos);
     missions.start(0);
     wanted.add(2);
     // Force-spawn two cruisers so the play shot visibly shows the pursuit
