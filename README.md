@@ -1,62 +1,68 @@
-# Palmetto Heat
-
 [![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![rank](https://make.fun/badge/gta6-01/skipperchen0224/makefun-gta6/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/skipperchen0224/makefun-gta6/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-An open-world crime game in the spirit of GTA 6, built with three.js.
-Palmetto City, Mama Rosa, and everything in between are original —
-no Rockstar assets, no borrowed names.
+# Palmetto Heat
 
-**Play it:** https://skipperchen0224.github.io/makefun-gta6/game/index.html
+A browser open-world crime game in the spirit of GTA 6, rendered with
+three.js. You start broke on foot in Palmetto City, a sun-bleached
+coastal town of avenues, palm trees and a beach along its east edge —
+and Mama Rosa has six jobs that will put cash in your pocket and the
+police on your tail. Palmetto City, Mama Rosa and the whole cast are
+original creations; nothing here is taken from Rockstar.
 
-You can also run it yourself: serve the `game/` folder locally
-(`node serve.ts`, then open http://localhost:8080).
+**Play now:** https://skipperchen0224.github.io/makefun-gta6/game/index.html
 
-## What you're getting into
+Prefer to run it yourself? Serve the `game/` folder locally
+(`node serve.ts`, then open http://localhost:8080). No installer, no
+account, no download — it just runs in the tab.
 
-Palmetto City is a sun-baked grid of avenues, palm trees, and rooftop
-AC units, with a beach running down its east edge. You wake up on foot
-at the spawn plaza, an orange car parked nearby and $500 in your pocket.
+## How it plays
 
-- **Driving** — grab any car you see. F gets you in, WASD steers,
-  Space throws the handbrake. Traffic rolls along the road lines and
-  the camera stays glued behind you.
-- **Six jobs for Mama Rosa** — a pickup, a timed courier run, tailing
-  a courier, shaking off 3-star heat, clearing out a rival crew on
-  foot, and a 5-star getaway. Press E to take the next job; every
-  job pays cash.
-- **Wanted, 0–5 stars** — break the law and the heat climbs; stay
-  clean and it cools off. Cops chase and ram, start shooting at
-  3 stars and up, and at 5 stars a helicopter circles overhead.
-- **Combat** — click to shoot on foot. Pedestrians scatter when the
-  shooting starts, and cop cars can be disabled.
-- **HUD** — cash, health bar, wanted stars, current objective, speed,
-  and a live minimap with traffic, cops, and the objective marker.
-- **Save** — cash, finished missions, and your best wanted level are
-  stored in localStorage, so progress survives closing the tab.
+You wake up at the spawn plaza with $500 and an orange car parked
+nearby. Everything after that is up to you.
+
+- **Take any car** — walk up to one and press F to get in. WASD
+  drives, Space pulls the handbrake, and the camera rides behind you
+  while traffic flows along the road lines.
+- **Six missions from Mama Rosa** — a pickup, a courier run against
+  the clock, tailing another courier, losing a 3-star wanted level,
+  clearing a rival crew on foot, and a full 5-star getaway. Press E
+  to pick up the next job; each one pays.
+- **Wanted level, 0–5 stars** — cause trouble and the heat rises;
+  lie low and it fades. Police chase and ram you, open fire from
+  3 stars onward, and at 5 stars a helicopter joins the hunt.
+- **Fight on foot** — click to shoot. Pedestrians flee when shots
+  ring out, and police cars can be knocked out of the chase.
+- **HUD** — cash, health, wanted stars, your current objective,
+  speed, and a live minimap showing traffic, cops and the objective.
+- **Progress that sticks** — cash, completed missions and your
+  highest wanted level are saved in localStorage, so closing the tab
+  doesn't wipe your run.
 
 ## Controls
 
-| Key | Action |
+| Key | Does what |
 | --- | --- |
-| WASD | Move / drive |
+| WASD | Move on foot / drive |
 | Space | Handbrake |
-| Shift | Sprint (on foot) |
-| F | Enter / exit car |
-| E | Start the next mission |
-| Click | Shoot (on foot) |
+| Shift | Sprint on foot |
+| F | Get in / out of a car |
+| E | Accept the next mission |
+| Click | Shoot on foot |
 | R | Restart after BUSTED / WASTED |
 
-## Tech
+## Under the hood
 
-- Static files under `game/` — no build step, no network requests
-  while playing.
-- three.js r160, vendored in the repo as
+- Plain static files inside `game/` — there is no build step, and
+  nothing is fetched from the network while you play.
+- three.js r160, vendored locally as
   `game/vendor/three.module.min.js` — no CDN, no package manager.
-- All sound is synthesized with WebAudio; there are no audio files.
-- Code is split by job: `city`, `vehicles`, `peds`, `cops`, `wanted`,
-  `missions`, `hud`, `input`, `audio`, `save`, `config`, `main`.
+- Every sound is synthesized live with WebAudio; the repo ships no
+  audio files.
+- The code is organized by system: `city`, `vehicles`, `peds`,
+  `cops`, `wanted`, `missions`, `hud`, `input`, `audio`, `save`,
+  `config`, `main`.
 
 ## License
 
