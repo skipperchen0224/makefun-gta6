@@ -5,36 +5,36 @@
 [![reward](https://make.fun/badge/gta6-01/skipperchen0224/makefun-gta6/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
 An open-world crime game in the spirit of GTA 6, built with three.js.
-Everything here is original — the city, the characters, the story.
-Palmetto City and Mama Rosa are ours; no Rockstar assets, no borrowed names.
+Palmetto City, Mama Rosa, and everything in between are original —
+no Rockstar assets, no borrowed names.
 
 **Play it:** https://skipperchen0224.github.io/makefun-gta6/game/index.html
 
-Or run it yourself: serve the `game/` folder locally
+You can also run it yourself: serve the `game/` folder locally
 (`node serve.ts`, then open http://localhost:8080).
 
-## The game
+## What you're getting into
 
-Palmetto City is a sun-soaked grid of avenues, palm trees, and rooftop
-AC units, with a beach along its east edge. You start on foot by the
-spawn plaza — an orange car waiting nearby, $500 in your pocket.
+Palmetto City is a sun-baked grid of avenues, palm trees, and rooftop
+AC units, with a beach running down its east edge. You wake up on foot
+at the spawn plaza, an orange car parked nearby and $500 in your pocket.
 
-- **Drive** — take any car you find (F to get in, WASD to drive, Space
-  for the handbrake). Traffic cruises the road lines and the camera
-  chases behind you.
-- **Six missions for Mama Rosa** — a pickup, a timed courier run,
-  tailing a courier, shaking off a 3-star heat, clearing a rival crew
-  on foot, and a 5-star getaway. Press E to take the next job; every
+- **Driving** — grab any car you see. F gets you in, WASD steers,
+  Space throws the handbrake. Traffic rolls along the road lines and
+  the camera stays glued behind you.
+- **Six jobs for Mama Rosa** — a pickup, a timed courier run, tailing
+  a courier, shaking off 3-star heat, clearing out a rival crew on
+  foot, and a 5-star getaway. Press E to take the next job; every
   job pays cash.
-- **Wanted, 0–5 stars** — breaking the law raises the heat; staying
-  clean lets it cool down. Cops chase and ram, open fire at 3 stars
-  and up, and a helicopter circles overhead at 5.
-- **Combat** — click to shoot on foot. Pedestrians scatter, and cop
-  cars can be disabled.
+- **Wanted, 0–5 stars** — break the law and the heat climbs; stay
+  clean and it cools off. Cops chase and ram, start shooting at
+  3 stars and up, and at 5 stars a helicopter circles overhead.
+- **Combat** — click to shoot on foot. Pedestrians scatter when the
+  shooting starts, and cop cars can be disabled.
 - **HUD** — cash, health bar, wanted stars, current objective, speed,
-  and a live minimap showing traffic, cops, and the objective marker.
-- **Save** — your cash, finished missions, and best wanted level are
-  kept in localStorage, so progress survives closing the tab.
+  and a live minimap with traffic, cops, and the objective marker.
+- **Save** — cash, finished missions, and your best wanted level are
+  stored in localStorage, so progress survives closing the tab.
 
 ## Controls
 
