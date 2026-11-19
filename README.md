@@ -1,20 +1,62 @@
-# makefun-gta6
+# Palmetto Heat
 
-[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/skipperchen0224/makefun-gta6/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/skipperchen0224/makefun-gta6/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![make.fun — gta6-01](https://img.shields.io/badge/make.fun-gta6--01-orange?style=flat-square)](https://make.fun/c/gta6-01)
+[![Prize pool $1,666](https://img.shields.io/badge/prize-%241%2C666-gold?style=flat-square)](https://make.fun/c/gta6-01)
+[![Open-world crime game](https://img.shields.io/badge/Palmetto%20Heat-open%20world-teal?style=flat-square)](https://skipperchen0224.github.io/makefun-gta6/game/index.html)
 
-Palmetto Heat — an original open-world crime game built for make.fun's "Make GTA 6" bounty. Explore the neon streets of Palmetto City on foot and by car, steal rides, run six story missions for cash, and outrun the Palmetto PD as your wanted level climbs from one star to five. Built with three.js, playable in a desktop browser from static files, no network needed.
+An open-world crime game in the spirit of GTA 6, built with three.js — an
+original city, original characters, original story. No Rockstar assets, no
+borrowed names: Palmetto City and Mama Rosa are ours.
 
-## Run it
+**Play it:** https://skipperchen0224.github.io/makefun-gta6/game/index.html
+(or serve `game/` locally with `node serve.ts` and open http://localhost:8080)
+
+## The game
+
+Palmetto City is a sun-soaked grid of avenues, palms, and rooftop AC units,
+with a beach on its east edge. You start on foot by the spawn plaza with an
+orange car waiting and $500 in your pocket.
+
+- **Drive** — steal any car (F to enter, WASD + Space handbrake), traffic
+  cruises the road lines, and the camera chases behind you.
+- **Six missions for Mama Rosa** — pickup, timed courier run, tailing a
+  courier, losing a 3-star heat, clearing a rival crew on foot, and a
+  5-star getaway. Press E to start the next job; each pays cash.
+- **Wanted 0–5 stars** — crimes raise the heat; staying clean lets it decay.
+  Cops chase and ram, shoot at 3+ stars, and a helicopter circles at 5.
+- **Combat** — click to shoot on foot; peds scatter, cop cars can be disabled.
+- **HUD** — cash, health bar, wanted stars, mission objective, speed, and a
+  live minimap with traffic, cops, and the objective marker.
+- **Save** — cash, completed missions, and best wanted level persist in
+  localStorage.
+
+## Controls
+
+| Key | Action |
+| --- | --- |
+| WASD | Move / drive |
+| Space | Handbrake |
+| Shift | Sprint (on foot) |
+| F | Enter / exit car |
+| E | Start next mission |
+| Click | Shoot (on foot) |
+| R | Restart after BUSTED / WASTED |
+
+## Tech
+
+- Static files under `game/`, no build step, no network requests at runtime.
+- three.js r160, vendored as `game/vendor/three.module.min.js`.
+- All sound is synthesized with WebAudio — no audio files.
+- Source split by job: `city`, `vehicles`, `peds`, `cops`, `wanted`,
+  `missions`, `hud`, `input`, `audio`, `save`, `config`, `main`.
+
+## Enter it
 
 ```sh
-node serve.ts
-# then open http://localhost:8080
+mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+node ../gta6-01-kit/cli/makefun.mjs check --kit ../gta6-01-kit --repo .
 ```
 
-Controls: WASD move/drive, Shift sprint/handbrake, Space jump, F enter/exit car, E mission, mouse click shoot, C camera, M mute, Esc pause. Progress (cash, best cash, mission) saves to localStorage.
+## License
 
----
-
-<sub>Entered on [make.fun](https://make.fun/?ref=wtve9p9x&utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>
+MIT — see [LICENSE](LICENSE).

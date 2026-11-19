@@ -1,94 +1,111 @@
+// Palmetto Heat — global tuning and mission table.
+// One place for every number a designer would tweak: world size, car feel,
+// wanted rules, payouts and the six story missions Mama Rosa hands out.
+
 export const WORLD = {
-  SIZE: 400,
-  BLOCK: 40,
-  ROAD_W: 10
+  size: 480,          // playable square, metres, centred on (0, 0)
+  block: 40,          // city block pitch; roads run every `block` metres
+  roadWidth: 10,
+  buildingGap: 3,
 };
 
-export const COLORS = {
-  GROUND: 0x181818,
-  ROAD: 0x2b2b2b,
-  SIDEWALK: 0x6e6e6e,
-  BUILDING: 0x334455,
-  BUILDING_ACCENT: 0x112233,
-  WATER: 0x103050,
-  PLAYER: 0x3366cc,
-  COP: 0x112244,
-  TRAFFIC: [0xcc2222, 0x22cc22, 0xcccc22, 0xcccccc, 0x2222cc],
-  PED: 0x996633,
-  BEACON: 0xffaa00,
-  MARKER: 0x00ffff
+export const PLAYER = {
+  hp: 100,
+  walkSpeed: 7,
+  runSpeed: 11,
+  radius: 0.7,
 };
 
-export const TUNING = {
-  PLAYER_SPEED: 5.5,
-  PLAYER_SPRINT: 9.5,
-  PLAYER_ACCEL: 12.0,
-  GRAVITY: 25.0,
-  JUMP_FORCE: 9.0,
-  CAR_ACCEL: 18.0,
-  CAR_MAX_SPEED: 35.0,
-  CAR_BRAKE: 25.0,
-  CAR_STEER: 2.2,
-  COP_SPEED: 14.0,
-  COP_CATCH_DIST: 2.5,
-  HEALTH_MAX: 100
+export const CAR = {
+  accel: 22,          // m/s^2 at full throttle
+  reverseAccel: 12,
+  maxSpeed: 42,       // ~150 km/h
+  maxReverse: 10,
+  brake: 34,
+  turnRate: 1.9,      // rad/s at full lock, scaled by speed
+  grip: 3.2,          // lateral damping
+  handbrakeGrip: 0.9,
+  radius: 2.2,
 };
 
-export const SAVE_KEY = 'palmetto_heat_save_v1';
+export const WANTED_RULES = {
+  maxStars: 5,
+  decaySeconds: 15,   // quiet time before one star drops
+  stealCar: 1,
+  shoot: 1,
+  hurtPed: 1,
+  killPed: 2,
+  ramCop: 2,
+  copShootAtStars: 3, // cops open fire at 3+ stars
+  heliAtStars: 5,
+};
 
+export const ECONOMY = {
+  startCash: 500,
+  missionReward: [400, 600, 800, 900, 1000, 2500],
+};
+
+// Six story missions. `kind` drives the state machine in missions.js;
+// `place` is a named map spot resolved by city.js; `timeLimit` is seconds (0 = none).
 export const MISSIONS = [
-  {
-    name: "Palmetto Promenade",
-    stages: [
-      { type: 'goto', x: 80, z: 80, radius: 6, seconds: 0, text: "Drive to the waterfront promenade." },
-      { type: 'pickup', x: 120, z: 40, radius: 5, seconds: 0, text: "Collect the package from the contact." },
-      { type: 'deliver', x: -100, z: -100, radius: 6, seconds: 0, text: "Deliver the package to the drop point." }
-    ],
-    reward: 1000
-  },
-  {
-    name: "Heat Wave",
-    stages: [
-      { type: 'steal', x: -60, z: 120, radius: 8, seconds: 0, text: "Steal the marked sports car." },
-      { type: 'follow', x: 0, z: 0, radius: 15, seconds: 60, text: "Tail the informant without getting too close or losing them." },
-      { type: 'goto', x: 150, z: -150, radius: 8, seconds: 0, text: "Escape to the safehouse." }
-    ],
-    reward: 2500
-  },
-  {
-    name: "Downtown Dash",
-    stages: [
-      { type: 'race', x: -140, z: -140, radius: 7, seconds: 45, text: "Checkpoint 1: Reach the financial district." },
-      { type: 'race', x: 140, z: -140, radius: 7, seconds: 30, text: "Checkpoint 2: Speed through the neon strip." },
-      { type: 'race', x: 0, z: 160, radius: 7, seconds: 30, text: "Finish: Cross the finish line at the pier." }
-    ],
-    reward: 4000
-  },
-  {
-    name: "Bayside Blues",
-    stages: [
-      { type: 'goto', x: -120, z: 40, radius: 6, seconds: 0, text: "Investigate the abandoned warehouse." },
-      { type: 'evade', x: 0, z: 0, radius: 0, seconds: 45, text: "Lose the police pursuit!" },
-      { type: 'deliver', x: 100, z: 100, radius: 6, seconds: 0, text: "Return the stolen asset to the bay." }
-    ],
-    reward: 6000
-  },
-  {
-    name: "Under Pressure",
-    stages: [
-      { type: 'pickup', x: 60, z: -80, radius: 5, seconds: 40, text: "Grab the briefcase before time runs out." },
-      { type: 'evade', x: 0, z: 0, radius: 0, seconds: 60, text: "Shake the heat completely." },
-      { type: 'deliver', x: -150, z: 150, radius: 8, seconds: 0, text: "Deliver to the boss at the marina." }
-    ],
-    reward: 8500
-  },
-  {
-    name: "Palmetto Heat",
-    stages: [
-      { type: 'goto', x: 0, z: 0, radius: 10, seconds: 0, text: "Head to City Hall for the final showdown." },
-      { type: 'steal', x: -80, z: -80, radius: 8, seconds: 0, text: "Hijack the chief's cruiser." },
-      { type: 'evade', x: 0, z: 0, radius: 0, seconds: 90, text: "Survive the ultimate lockdown and escape the city!" }
-    ],
-    reward: 15000
-  }
+  { id: 1, name: 'First Pickup', kind: 'goto', place: 'diner', blurb: 'Mama Rosa needs a package from the diner. Drive there.', timeLimit: 0 },
+  { id: 2, name: 'Courier Run', kind: 'timed', place: 'pier', blurb: 'Deliver the package to the pier before the clock runs out.', timeLimit: 75 },
+  { id: 3, name: 'Tail the Courier', kind: 'tail', place: 'downtown', blurb: 'Stay on the courier’s tail until he cracks.', timeLimit: 90 },
+  { id: 4, name: 'Lose the Heat', kind: 'escape', place: 'safehouse', blurb: 'Three stars on you. Shake the cops, then reach the safehouse.', timeLimit: 120 },
+  { id: 5, name: 'Street Sweep', kind: 'shoot', place: 'alley', blurb: 'Five of the rival crew are in the alley. Clear them out, on foot.', timeLimit: 0 },
+  { id: 6, name: 'The Big Getaway', kind: 'getaway', place: 'safehouse', blurb: 'Five stars, one car, one safehouse. Survive the ride home.', timeLimit: 150 },
 ];
+
+export const PLACES = {
+  diner: { x: -100, z: -60, label: 'Mama Rosa’s Diner' },
+  pier: { x: 180, z: 160, label: 'Palmetto Pier' },
+  downtown: { x: 60, z: -100, label: 'Downtown' },
+  safehouse: { x: -160, z: 140, label: 'Safehouse' },
+  alley: { x: 20, z: 100, label: 'The Alley' },
+  spawn: { x: 0, z: 100, label: 'Spawn' },
+};
+
+export const KEYS = {
+  forward: 'KeyW',
+  back: 'KeyS',
+  left: 'KeyA',
+  right: 'KeyD',
+  brake: 'Space',
+  enterCar: 'KeyF',
+  shoot: 'Mouse0',
+  sprint: 'ShiftLeft',
+  restart: 'KeyR',
+};
+
+// Sun-soaked Palmetto City palette: warm plaster, teal sea air, hot asphalt.
+export const PALETTE = {
+  sky: 0x8ec9e8,
+  fog: 0xa8d4e6,
+  ground: 0x9aa578,
+  road: 0x3a3f46,
+  roadLine: 0xf5d76e,
+  sidewalk: 0xb9b3a4,
+  building: [0xe8b48c, 0xd9a0a0, 0xf2d5a0, 0xa8c8b8, 0xc9b8d9, 0xe8e0cc, 0x9fc3d9],
+  windowLit: 0xffe9a8,
+  windowDark: 0x2c3e50,
+  palmTrunk: 0x8a6b4a,
+  palmLeaf: 0x3f8f4f,
+  playerCar: 0xff7a1a,
+  trafficCar: [0x3f6fb5, 0xc23b2e, 0xe8e8e8, 0x2e8b6a, 0x7a5fc0, 0xd9a441],
+  copCar: 0x1c2733,
+  copLight: [0xff2222, 0x2244ff],
+};
+
+export function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+export function lerp(a, b, t) { return a + (b - a) * t; }
+
+// Deterministic RNG so screenshots are reproducible: seed comes from ?seed=.
+export function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}

@@ -1,21 +1,51 @@
-import { SAVE_KEY } from './config.js';
+// Palmetto Heat — save / load through localStorage.
+// One versioned key; a corrupt or foreign payload is ignored, never fatal.
+
+const KEY = 'palmetto-heat-save-v1';
+
+export function hasSave() {
+  try {
+    return window.localStorage.getItem(KEY) !== null;
+  } catch {
+    return false;
+  }
+}
 
 export function loadSave() {
   try {
-    const data = localStorage.getItem(SAVE_KEY);
-    if (data) {
-      return JSON.parse(data);
-    }
-  } catch (e) {
-    console.error("Failed to load save", e);
+    const raw = window.localStorage.getItem(KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.version !== 1) return null;
+    return {
+      cash: Number(data.cash) || 0,
+      completed: Array.isArray(data.completed) ? data.completed.filter(Number.isInteger) : [],
+      bestWanted: Number(data.bestWanted) || 0,
+      playSeconds: Number(data.playSeconds) || 0,
+    };
+  } catch {
+    return null;
   }
-  return { money: 0, bestMoney: 0, missionIndex: 0, muted: false };
 }
 
-export function saveSave(state) {
+export function writeSave(state) {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-  } catch (e) {
-    console.error("Failed to save", e);
+    window.localStorage.setItem(KEY, JSON.stringify({
+      version: 1,
+      cash: state.cash,
+      completed: state.completed,
+      bestWanted: state.bestWanted,
+      playSeconds: Math.floor(state.playSeconds),
+      savedAt: new Date().toISOString(),
+    }));
+    return true;
+  } catch {
+    return false;
   }
+}
+
+export function clearSave() {
+  try {
+    window.localStorage.removeItem(KEY);
+  } catch { /* storage unavailable */ }
 }

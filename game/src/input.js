@@ -1,63 +1,90 @@
-export function createInput(canvas) {
-  const keys = {};
-  let mouseDX = 0;
-  let mouseDY = 0;
-  let clicked = false;
-  let consumedActions = {};
+// Palmetto Heat — keyboard and mouse state.
+// Tracks held keys, edge-triggered "just pressed" keys, mouse buttons and
+// pointer-lock look deltas. One `resetFrame()` call per game tick clears edges.
 
-  window.addEventListener('keydown', e => {
-    keys[e.code] = true;
-    keys[e.key.toLowerCase()] = true;
+import { KEYS } from './config.js';
+
+const held = new Set();
+const pressed = new Set();
+let mouseHeld = false;
+let mousePressed = false;
+let lookX = 0;
+let lookY = 0;
+let locked = false;
+let canvasEl = null;
+
+export function initInput(canvas) {
+  canvasEl = canvas;
+  window.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    held.add(e.code);
+    pressed.add(e.code);
+    if (e.code === KEYS.brake) e.preventDefault();
   });
-
-  window.addEventListener('keyup', e => {
-    keys[e.code] = false;
-    keys[e.key.toLowerCase()] = false;
+  window.addEventListener('keyup', (e) => held.delete(e.code));
+  window.addEventListener('blur', () => { held.clear(); mouseHeld = false; });
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    mouseHeld = true;
+    mousePressed = true;
+    lockPointer();
   });
-
+  window.addEventListener('mouseup', (e) => {
+    if (e.button === 0) mouseHeld = false;
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!locked) return;
+    lookX += e.movementX || 0;
+    lookY += e.movementY || 0;
+  });
+  document.addEventListener('pointerlockchange', () => {
+    locked = document.pointerLockElement === canvasEl;
+  });
+  // Clicking the canvas also starts the game from the title screen.
   canvas.addEventListener('click', () => {
-    canvas.requestPointerLock();
-    clicked = true;
+    if (!locked) lockPointer();
   });
-
-  document.addEventListener('mousemove', e => {
-    if (document.pointerLockElement === canvas) {
-      mouseDX += e.movementX;
-      mouseDY += e.movementY;
-    }
-  });
-
-  return {
-    keys,
-    get mouseDX() {
-      const val = mouseDX;
-      mouseDX = 0;
-      return val;
-    },
-    get mouseDY() {
-      const val = mouseDY;
-      mouseDY = 0;
-      return val;
-    },
-    get clicked() {
-      const val = clicked;
-      clicked = false;
-      return val;
-    },
-    axis(negativeKey, positiveKey) {
-      let val = 0;
-      if (keys[negativeKey] || keys[negativeKey.toUpperCase()]) val -= 1;
-      if (keys[positiveKey] || keys[positiveKey.toUpperCase()]) val += 1;
-      return val;
-    },
-    consume(action) {
-      if (keys[action] || keys[action.toLowerCase()]) {
-        if (consumedActions[action]) return false;
-        consumedActions[action] = true;
-        return true;
-      }
-      consumedActions[action] = false;
-      return false;
-    }
-  };
 }
+
+export function lockPointer() {
+  if (!canvasEl) return;
+  try {
+    const p = canvasEl.requestPointerLock();
+    if (p && p.catch) p.catch(() => {});
+  } catch { /* pointer lock unavailable (headless shot mode) */ }
+}
+
+export function isDown(code) { return held.has(code); }
+export function justPressed(code) { return pressed.has(code); }
+export function mouseDown() { return mouseHeld; }
+export function mouseClicked() { return mousePressed; }
+
+// Driving axes in [-1, 1]: throttle (+1 forward), steer (+1 right).
+export function driveAxes() {
+  const throttle = (isDown(KEYS.forward) ? 1 : 0) - (isDown(KEYS.back) ? 1 : 0);
+  const steer = (isDown(KEYS.right) ? 1 : 0) - (isDown(KEYS.left) ? 1 : 0);
+  return { throttle, steer, brake: isDown(KEYS.brake) };
+}
+
+// On-foot move axes: x = strafe right, z = forward (camera-relative in main.js).
+export function walkAxes() {
+  const x = (isDown(KEYS.right) ? 1 : 0) - (isDown(KEYS.left) ? 1 : 0);
+  const z = (isDown(KEYS.forward) ? 1 : 0) - (isDown(KEYS.back) ? 1 : 0);
+  return { x, z, sprint: isDown(KEYS.sprint) };
+}
+
+// Consume accumulated look deltas since the last call (radians-ish pixels).
+export function takeLook() {
+  const dx = lookX;
+  const dy = lookY;
+  lookX = 0;
+  lookY = 0;
+  return { dx, dy };
+}
+
+export function resetFrame() {
+  pressed.clear();
+  mousePressed = false;
+}
+
+export function anyKeyPressed() { return pressed.size > 0 || mousePressed; }
