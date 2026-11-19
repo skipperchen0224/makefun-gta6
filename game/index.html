@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Palmetto Heat</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0218;
+            font-family: 'Courier New', Courier, monospace, sans-serif;
+            color: #fff;
+        }
+        #game {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 1;
+        }
+        /* HUD */
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+        .hud-top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            width: 100%;
+        }
+        .hud-group {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .hud-panel {
+            background: rgba(11, 2, 24, 0.85);
+            border: 2px solid #ff3d7f;
+            box-shadow: 0 0 15px rgba(255, 61, 127, 0.4);
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        #hud-cash {
+            color: #ffb703;
+            text-shadow: 0 0 8px rgba(255, 183, 3, 0.6);
+        }
+        #hud-stars {
+            color: #ff3d7f;
+            letter-spacing: 4px;
+            text-shadow: 0 0 8px rgba(255, 61, 127, 0.8);
+        }
+        .health-container {
+            width: 150px;
+            height: 18px;
+            background: #20083a;
+            border: 2px solid #ff3d7f;
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+        }
+        #hud-health {
+            width: 100%;
+            height: 100%;
+        }
+        #hud-health-fill {
+            width: 100%;
+            height: 100%;
+            background: #ff3d7f;
+            box-shadow: 0 0 10px #ff3d7f;
+            transition: width 0.2s ease;
+        }
+        .hud-bottom-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+        }
+        #hud-mission {
+            max-width: 300px;
+        }
+        #hud-mission-title {
+            color: #ffb703;
+            font-size: 14px;
+            margin-bottom: 4px;
+            text-shadow: 0 0 5px rgba(255, 183, 3, 0.5);
+        }
+        #hud-mission-text {
+            font-size: 12px;
+            color: #ccc;
+        }
+        .hud-right-stack {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 15px;
+        }
+        #hud-speed {
+            font-size: 24px;
+            color: #00f0ff;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.6);
+        }
+        #hud-minimap {
+            width: 160px;
+            height: 160px;
+            background: rgba(11, 2, 24, 0.9);
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        #hud-toast {
+            position: fixed;
+            top: 20%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 61, 127, 0.9);
+            color: #fff;
+            padding: 10px 25px;
+            border-radius: 4px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 0 20px #ff3d7f;
+            z-index: 20;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        /* Overlays */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 2, 24, 0.92);
+            z-index: 30;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            padding: 20px;
+            transition: opacity 0.3s ease;
+        }
+        .hidden {
+            display: none !important;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .overlay-content {
+            background: #140428;
+            border: 3px solid #ff3d7f;
+            box-shadow: 0 0 30px rgba(255, 61, 127, 0.6);
+            border-radius: 8px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            font-size: 42px;
+            color: #ff3d7f;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 15px rgba(255, 61, 127, 0.8);
+            letter-spacing: 3px;
+        }
+        h2 {
+            font-size: 20px;
+            color: #00f0ff;
+            margin: 0 0 20px 0;
+            letter-spacing: 2px;
+        }
+        p {
+            color: #b8b8b8;
+            font-size: 14px;
+            line-height: 1.6;
+            margin-bottom: 25px;
+        }
+        .controls-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+            text-align: left;
+            background: #0b0218;
+            padding: 15px;
+            border: 1px solid #331259;
+            border-radius: 4px;
+            margin-bottom: 25px;
+            font-size: 13px;
+        }
+        .controls-list div span {
+            color: #ffb703;
+        }
+        .btn {
+            background: #ff3d7f;
+            color: #fff;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: inherit;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 61, 127, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.2s ease;
+        }
+        .btn:hover {
+            background: #ff6097;
+            box-shadow: 0 0 25px rgba(255, 61, 127, 0.9);
+            transform: scale(1.03);
+        }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        #help-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 15;
+            background: rgba(11, 2, 24, 0.8);
+            border: 1px solid #00f0ff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #00f0ff;
+            pointer-events: none;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="game"></canvas>
+
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-top-row">
+            <div class="hud-group">
+                <div id="hud-cash" class="hud-panel">$0</div>
+                <div class="hud-panel health-container">
+                    <div id="hud-health"><div id="hud-health-fill"></div></div>
+                </div>
+            </div>
+            <div class="hud-group">
+                <div id="hud-stars" class="hud-panel">☆</div>
+            </div>
+        </div>
+        <div class="hud-bottom-row">
+            <div id="hud-mission" class="hud-panel">
+                <div id="hud-mission-title">MISSION</div>
+                <div id="hud-mission-text">Explore Palmetto City. Find trouble or missions.</div>
+            </div>
+            <div class="hud-right-stack">
+                <div id="hud-speed" class="hud-panel">0 MPH</div>
+                <canvas id="hud-minimap" width="160" height="160"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="hud-toast">Toast Message</div>
+
+    <div id="help-panel">
+        WASD: Move/Drive | Shift: Sprint/Brake | Space: Jump | F: Car | E: Mission<br>
+        Click: Shoot | C: Camera | M: Mute | Esc: Pause
+    </div>
+
+    <!-- OVERLAYS -->
+    <!-- Start Overlay -->
+    <div id="overlay-start" class="overlay">
+        <div class="overlay-content">
+            <h1 id="title">PALMETTO HEAT</h1>
+            <h2 id="subtitle">PALMETTO CITY</h2>
+            <p id="story">Neon lights, synthwave nights, and total lawlessness. Welcome to Palmetto City, where the heat is always rising. Steal rides, dodge the cops, complete underground gigs, and own the grid.</p>
+            <div class="controls-list">
+                <div><span>WASD / Arrows:</span> Move / Drive</div>
+                <div><span>Shift:</span> Sprint / Handbrake</div>
+                <div><span>Space:</span> Jump</div>
+                <div><span>F:</span> Enter / Exit Car</div>
+                <div><span>E:</span> Interact / Mission</div>
+                <div><span>Mouse Click:</span> Shoot</div>
+                <div><span>C:</span> Toggle Camera</div>
+                <div><span>M:</span> Toggle Audio</div>
+            </div>
+            <button id="startBtn" class="btn">START GAME</button>
+        </div>
+    </div>
+
+    <!-- Pause Overlay -->
+    <div id="overlay-pause" class="overlay hidden">
+        <div class="overlay-content">
+            <h1>PAUSED</h1>
+            <p>Take a breather, neon runner.</p>
+            <button id="resumeBtn" class="btn">RESUME</button>
+        </div>
+    </div>
+
+    <!-- Busted Overlay -->
+    <div id="overlay-busted" class="overlay hidden">
+        <div class="overlay-content">
+            <h1>BUSTED</h1>
+            <p>The Palmetto PD caught up with you. Pay the fine and back to the streets.</p>
+            <button id="bustedBtn" class="btn">CONTINUE</button>
+        </div>
+    </div>
+
+    <!-- Wasted Overlay -->
+    <div id="overlay-wasted" class="overlay hidden">
+        <div class="overlay-content">
+            <h1>WASTED</h1>
+            <p>You took too much heat. Respawning at the local safehouse...</p>
+            <button id="wastedBtn" class="btn">RESPAWN</button>
+        </div>
+    </div>
+
+    <!-- Load Main Script Module -->
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
