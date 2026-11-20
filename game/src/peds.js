@@ -1,7 +1,8 @@
 // Palmetto Heat — pedestrians.
 // Sidewalk walkers with a tiny state machine (walk / flee / down). They dodge
 // the player's car, scatter at gunfire, and remember nothing between frames
-// except their own heading and speed.
+// except their own heading and speed. In the rain they hurry: walk speed
+// rises and they flee farther from gunfire and horns.
 
 import * as THREE from 'three';
 import { WORLD, mulberry32 } from './config.js';
@@ -10,7 +11,11 @@ import { resolveCircleCollision, snapToRoad } from './city.js';
 const peds = [];
 let sceneRef = null;
 let rng = mulberry32(5);
+let raining = false;
 const SHIRT_COLORS = [0xe8e8e8, 0x3f6fb5, 0xc23b2e, 0x2e8b6a, 0xd9a441, 0x7a5fc0, 0xe87ab0];
+
+// Called by the weather system: rain makes the streets hurry.
+export function setRain(isRaining) { raining = isRaining; }
 
 function buildPedMesh(shirtColor, hostile = false) {
   const g = new THREE.Group();
@@ -77,13 +82,15 @@ export function spawnHostileSquad(x, z, count = 5) {
   return squad;
 }
 
-// Gunfire at (x, z): everyone nearby runs away from it.
+// Gunfire (or a horn blast) at (x, z): everyone nearby runs away from it.
+// In the rain the scare radius grows — wet streets, short tempers.
 export function scarePeds(x, z, radius = 45) {
+  const r = raining ? radius * 1.3 : radius;
   for (const p of peds) {
     if (p.state === 'down') continue;
     const dx = p.x - x;
     const dz = p.z - z;
-    if (dx * dx + dz * dz < radius * radius) {
+    if (dx * dx + dz * dz < r * r) {
       p.state = 'flee';
       p.fleeTime = 4 + rng() * 2;
       p.heading = Math.atan2(dx, dz);
@@ -92,11 +99,12 @@ export function scarePeds(x, z, radius = 45) {
 }
 
 export function updatePeds(dt, playerX, playerZ, playerInCar, carSpeed) {
+  const hurry = raining ? 1.6 : 1;
   for (const p of peds) {
     if (p.state === 'down') continue;
-    let speed = p.speed;
+    let speed = p.speed * hurry;
     if (p.state === 'flee') {
-      speed = 4.5;
+      speed = 4.5 * hurry;
       p.fleeTime -= dt;
       if (p.fleeTime <= 0) p.state = 'walk';
     } else if (p.state === 'walk') {
@@ -110,7 +118,7 @@ export function updatePeds(dt, playerX, playerZ, playerInCar, carSpeed) {
           p.state = 'flee';
           p.fleeTime = 2.5;
           p.heading = Math.atan2(dx, dz);
-          speed = 4.5;
+          speed = 4.5 * hurry;
         }
       }
     }

@@ -2,7 +2,8 @@
 // A seeded grid of blocks: roads on every `block` line, buildings inside the
 // blocks, palms along the sidewalks, and the AABB colliders every other
 // system steers around. Nothing here is random at runtime: the seed comes
-// from ?seed= so screenshots are reproducible.
+// from ?seed= so screenshots are reproducible. Street lamps line the
+// avenues and switch on after dark (setNightMode, driven by weather.js).
 
 import * as THREE from 'three';
 import { WORLD, PALETTE, PLACES, mulberry32 } from './config.js';
@@ -12,6 +13,8 @@ const colliders = [];
 // Road centrelines, for traffic, peds and mission spawns.
 const roadLines = [];
 let cityGroup = null;
+// Shared lamp-head material: one colour swap lights the whole city.
+let lampMat = null;
 
 function makeWindowTexture(rng, baseColor) {
   const c = document.createElement('canvas');
@@ -80,12 +83,32 @@ function addPalm(scene, rng, x, z) {
   scene.add(leaves);
 }
 
+// One street lamp: a dark pole and a lamp head that shares lampMat, so the
+// whole city lights up with a single colour swap at night.
+function addLamp(scene, x, z) {
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.09, 0.12, 6.4, 6),
+    new THREE.MeshLambertMaterial({ color: 0x2c3240 }),
+  );
+  pole.position.set(x, 3.2, z);
+  scene.add(pole);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), lampMat);
+  head.position.set(x, 6.5, z);
+  scene.add(head);
+}
+
+// Night mode: lamp heads go from dull grey to warm yellow.
+export function setNightMode(on) {
+  if (lampMat) lampMat.color.setHex(on ? 0xffe9a8 : 0x4a5058);
+}
+
 export function buildCity(scene, seed = 1) {
   const rng = mulberry32(seed);
   cityGroup = new THREE.Group();
   scene.add(cityGroup);
   const half = WORLD.size / 2;
   const step = WORLD.block;
+  lampMat = new THREE.MeshBasicMaterial({ color: 0x4a5058 });
 
   // Ground: warm grass with a sand-coloured beach strip on the east edge.
   const ground = new THREE.Mesh(
@@ -165,6 +188,14 @@ export function buildCity(scene, seed = 1) {
     addPalm(scene, rng, -8, t);
     addPalm(scene, rng, 8, t + 14);
     addPalm(scene, rng, half - 8, t + 7);
+  }
+
+  // Street lamps down both central avenues, alternating sides.
+  for (let t = -half + 20; t < half - 10; t += 40) {
+    addLamp(scene, -7.5, t);
+    addLamp(scene, 7.5, t + 20);
+    addLamp(scene, t, -7.5);
+    addLamp(scene, t + 20, 7.5);
   }
 
   // Diner, pier and safehouse landmarks: simple coloured boxes with a sign slab.

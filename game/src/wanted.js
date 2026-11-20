@@ -1,6 +1,8 @@
 // Palmetto Heat — wanted level, 0 to 5 stars.
 // Crimes add heat; quiet time decays it. Listeners (HUD, cops) subscribe to
 // level changes. The rules live in config.js; this module only keeps score.
+// New in this round: reckless driving counts too — drifting past a cop car
+// or leaning on the horn in their face adds a star of its own.
 
 import { WANTED_RULES, clamp } from './config.js';
 
@@ -15,6 +17,8 @@ export function initWanted() {
 }
 
 export function getStars() { return stars; }
+
+export function isWanted() { return stars > 0; }
 
 export function onWantedChange(fn) { listeners.push(fn); }
 
@@ -40,6 +44,7 @@ export function addCrime(kind) {
     hurtPed: WANTED_RULES.hurtPed,
     killPed: WANTED_RULES.killPed,
     ramCop: WANTED_RULES.ramCop,
+    reckless: WANTED_RULES.reckless,
   };
   addHeat(table[kind] ?? 1);
 }

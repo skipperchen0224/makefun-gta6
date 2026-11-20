@@ -1,6 +1,7 @@
 // Palmetto Heat — keyboard and mouse state.
 // Tracks held keys, edge-triggered "just pressed" keys, mouse buttons and
 // pointer-lock look deltas. One `resetFrame()` call per game tick clears edges.
+// The mouse wheel now zooms the chase camera in and out (takeZoom).
 
 import { KEYS } from './config.js';
 
@@ -10,6 +11,7 @@ let mouseHeld = false;
 let mousePressed = false;
 let lookX = 0;
 let lookY = 0;
+let wheelDelta = 0;
 let locked = false;
 let canvasEl = null;
 
@@ -37,6 +39,10 @@ export function initInput(canvas) {
     lookX += e.movementX || 0;
     lookY += e.movementY || 0;
   });
+  canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    wheelDelta += e.deltaY;
+  }, { passive: false });
   document.addEventListener('pointerlockchange', () => {
     locked = document.pointerLockElement === canvasEl;
   });
@@ -80,6 +86,14 @@ export function takeLook() {
   lookX = 0;
   lookY = 0;
   return { dx, dy };
+}
+
+// Consume accumulated wheel scroll since the last call, in zoom steps:
+// positive pulls the chase camera back, negative pushes it in.
+export function takeZoom() {
+  const steps = Math.trunc(wheelDelta / 120);
+  wheelDelta -= steps * 120;
+  return steps;
 }
 
 export function resetFrame() {

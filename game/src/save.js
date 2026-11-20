@@ -1,5 +1,7 @@
 // Palmetto Heat — save / load through localStorage.
 // One versioned key; a corrupt or foreign payload is ignored, never fatal.
+// The payload now also remembers which lead you play (Lucia or Jason),
+// your armour, and your best banked drift, on top of cash and missions.
 
 const KEY = 'palmetto-heat-save-v1';
 
@@ -22,6 +24,9 @@ export function loadSave() {
       completed: Array.isArray(data.completed) ? data.completed.filter(Number.isInteger) : [],
       bestWanted: Number(data.bestWanted) || 0,
       playSeconds: Number(data.playSeconds) || 0,
+      character: data.character === 'jason' ? 'jason' : 'lucia',
+      armor: Number(data.armor) || 0,
+      bestDrift: Number(data.bestDrift) || 0,
     };
   } catch {
     return null;
@@ -36,6 +41,9 @@ export function writeSave(state) {
       completed: state.completed,
       bestWanted: state.bestWanted,
       playSeconds: Math.floor(state.playSeconds),
+      character: state.character || 'lucia',
+      armor: Math.floor(state.armor || 0),
+      bestDrift: Math.floor(state.bestDrift || 0),
       savedAt: new Date().toISOString(),
     }));
     return true;

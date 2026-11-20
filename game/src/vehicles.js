@@ -1,10 +1,13 @@
 // Palmetto Heat — cars: build, drive, steal, crash.
 // Arcade physics on purpose: throttle, steering scaled by speed, handbrake
 // drift, building collision through city.js, and traffic that stays on the
-// road lines instead of ever ploughing through a block.
+// road lines instead of ever ploughing through a block. This round the
+// handbrake is a real drift: hold Space at speed and the back steps out,
+// the slide banks drift points, and the car keeps its grip profile per lead
+// (Lucia's cars hold a tighter line than Jason's).
 
 import * as THREE from 'three';
-import { CAR, PALETTE, clamp, mulberry32 } from './config.js';
+import { CAR, DRIFT, PALETTE, clamp, mulberry32 } from './config.js';
 import { resolveCircleCollision, randomRoadPoint } from './city.js';
 
 let sceneRef = null;
@@ -77,6 +80,11 @@ export function createCar(color, x, z, heading = 0, isCop = false) {
     isPlayer: false,
     dead: false,
     wheelSpin: 0,
+    // Drift state: main.js reads these every frame.
+    drifting: false,
+    driftScore: 0,   // points in the current slide
+    lastBanked: 0,   // points paid out when the last slide ended
+    grip: CAR.grip,  // per-lead grip; characters.js sets the player's
   };
   return car;
 }
@@ -122,20 +130,36 @@ function syncMesh(car) {
 }
 
 // Arcade drive step. Returns distance travelled (for crash sound + damage).
+// Handbrake at speed starts a drift: the back steps out (extra yaw, less
+// drag so the slide holds), points pile up with speed, and letting go banks
+// them into car.lastBanked for main.js to pay out.
 export function driveCar(car, dt, throttle, steer, brake) {
   if (car.dead) return 0;
   const forward = { x: Math.sin(car.heading), z: Math.cos(car.heading) };
   if (throttle > 0) car.speed += CAR.accel * throttle * dt;
   else if (throttle < 0) car.speed -= (car.speed > 0.5 ? CAR.brake : CAR.reverseAccel) * dt;
   if (brake) car.speed -= Math.sign(car.speed) * CAR.brake * dt;
-  // Drag + grip: kill sideways drift unless handbraking.
-  const grip = brake ? CAR.handbrakeGrip : CAR.grip;
-  car.speed -= car.speed * 0.25 * dt;
+  // Drift: handbrake at speed loosens the rear — more yaw, less drag, and
+  // the slide banks points. Grip is per-lead (Lucia holds tighter).
+  const sliding = brake && Math.abs(car.speed) > DRIFT.minSpeed;
+  const grip = car.grip || CAR.grip;
+  const drag = sliding ? 0.1 : 0.25;
+  car.speed -= car.speed * drag * dt;
   car.speed = clamp(car.speed, -CAR.maxReverse, CAR.maxSpeed);
   if (Math.abs(car.speed) < 0.05 && throttle === 0) car.speed = 0;
   const speedFactor = clamp(Math.abs(car.speed) / 12, 0, 1);
-  car.heading += steer * CAR.turnRate * speedFactor * Math.sign(car.speed || 1) * dt * (brake ? 1.5 : 1);
+  const yawBoost = sliding ? 1.8 : 1;
+  car.heading += steer * CAR.turnRate * speedFactor * Math.sign(car.speed || 1) * dt * yawBoost * (grip / CAR.grip);
   void grip;
+  if (sliding && steer !== 0) {
+    car.drifting = true;
+    car.driftScore += Math.abs(car.speed) * DRIFT.scoreRate * dt;
+  } else if (car.drifting) {
+    // Slide over: bank the points if the slide was worth anything.
+    car.drifting = false;
+    car.lastBanked = car.driftScore >= DRIFT.minBank ? car.driftScore : 0;
+    car.driftScore = 0;
+  }
   const nx = car.x + Math.sin(car.heading) * car.speed * dt;
   const nz = car.z + Math.cos(car.heading) * car.speed * dt;
   void forward;
@@ -144,6 +168,12 @@ export function driveCar(car, dt, throttle, steer, brake) {
   if (crashed) {
     car.speed *= -0.25;
     car.hp -= 4;
+    if (car.drifting) {
+      // A wall ends the slide with nothing banked.
+      car.drifting = false;
+      car.driftScore = 0;
+      car.lastBanked = 0;
+    }
     if (car.hp <= 0) car.dead = true;
   }
   car.x = hit.x;

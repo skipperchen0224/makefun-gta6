@@ -1,7 +1,10 @@
 // Palmetto Heat — police.
 // Cop cars spawn at the city edge in proportion to the wanted level, chase
 // the player, ram the car, and arrest a slow player on foot. At 3+ stars they
-// shoot; at 5 a helicopter circles overhead and never lands.
+// shoot; at 5 a helicopter circles overhead and never lands. New in this
+// round: alertTo() — a big drift or a horn blast in front of a cop sends the
+// nearest unit to investigate — and a searchlight cone under the helicopter
+// that only switches on after dark.
 
 import * as THREE from 'three';
 import { PALETTE, WANTED_RULES, clamp } from './config.js';
@@ -11,14 +14,22 @@ import { resolveCircleCollision } from './city.js';
 const cops = [];
 let sceneRef = null;
 let heli = null;
+let heliCone = null;
 let heliAngle = 0;
 let spawnCooldown = 0;
+let nightMode = false;
 
 export function initCops(scene) {
   sceneRef = scene;
   cops.length = 0;
   spawnCooldown = 0;
-  if (heli) { scene.remove(heli); heli = null; }
+  if (heli) { scene.remove(heli); heli = null; heliCone = null; }
+}
+
+// After dark the helicopter's searchlight cone comes on.
+export function setNightMode(on) {
+  nightMode = on;
+  if (heliCone) heliCone.visible = on;
 }
 
 function wantedToCount(stars) {
@@ -33,8 +44,29 @@ function spawnCopNear(px, pz, angle) {
   const car = createCar(PALETTE.copCar, x, z, Math.atan2(px - x, pz - z), true);
   car.cruise = 0;
   car.hp = 60;
+  car.alertX = null;
+  car.alertZ = null;
+  car.alertUntil = 0;
   cops.push(car);
   return car;
+}
+
+// A disturbance at (x, z) — a drift show, a horn blast — sends the nearest
+// cop to look. The alert fades after a few seconds if nothing is found.
+export function alertTo(x, z) {
+  let best = null;
+  let bestD = Infinity;
+  for (const cop of cops) {
+    if (cop.dead) continue;
+    const dx = cop.x - x;
+    const dz = cop.z - z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestD) { bestD = d2; best = cop; }
+  }
+  if (!best) return;
+  best.alertX = x;
+  best.alertZ = z;
+  best.alertUntil = performance.now() + 6000;
 }
 
 function buildHeli() {
@@ -58,6 +90,19 @@ function buildHeli() {
   lamp.position.set(0, -0.9, 1.5);
   g.add(lamp);
   g.userData.lamp = lamp;
+  // Searchlight cone: a translucent beam under the heli, night only.
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(7, 30, 16, 1, true),
+    new THREE.MeshBasicMaterial({
+      color: 0xfff2cc, transparent: true, opacity: 0.14,
+      side: THREE.DoubleSide, depthWrite: false,
+    }),
+  );
+  cone.position.y = -16;
+  cone.rotation.x = Math.PI;
+  cone.visible = nightMode;
+  g.add(cone);
+  heliCone = cone;
   return g;
 }
 
@@ -83,6 +128,7 @@ export function updateCops(dt, stars, player, onArrest, onCopShot) {
   } else if (stars < WANTED_RULES.heliAtStars && heli) {
     sceneRef.remove(heli);
     heli = null;
+    heliCone = null;
   }
   if (heli) {
     heliAngle += dt * 0.55;
@@ -98,12 +144,16 @@ export function updateCops(dt, stars, player, onArrest, onCopShot) {
     );
   }
 
-  // Chase: steer toward the player, ram, and shoot at 3+ stars.
+  // Chase: steer toward the player (or toward an alert point), ram, and
+  // shoot at 3+ stars.
   for (const cop of cops) {
     if (cop.dead) continue;
-    const dx = player.x - cop.x;
-    const dz = player.z - cop.z;
-    const dist = Math.hypot(dx, dz) || 1;
+    const hasAlert = cop.alertUntil > performance.now() && cop.alertX !== null;
+    const tx = hasAlert ? cop.alertX : player.x;
+    const tz = hasAlert ? cop.alertZ : player.z;
+    const dx = tx - cop.x;
+    const dz = tz - cop.z;
+    const dist = Math.hypot(player.x - cop.x, player.z - cop.z) || 1;
     const targetHeading = Math.atan2(dx, dz);
     let diff = targetHeading - cop.heading;
     while (diff > Math.PI) diff -= Math.PI * 2;
@@ -154,5 +204,5 @@ export function getCops() { return cops; }
 export function clearCops() {
   for (const cop of cops) sceneRef.remove(cop.mesh);
   cops.length = 0;
-  if (heli) { sceneRef.remove(heli); heli = null; }
+  if (heli) { sceneRef.remove(heli); heli = null; heliCone = null; }
 }

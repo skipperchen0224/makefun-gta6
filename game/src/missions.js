@@ -1,7 +1,9 @@
 // Palmetto Heat — the six story missions.
 // Each mission is a small state machine: idle -> active -> done | failed.
 // The game loop feeds it a context object (positions, speeds, targets) and
-// it answers with the current objective text and completion events.
+// it answers with the current objective text and completion events. Each
+// mission now has a per-lead brief: Lucia and Jason get the same job from
+// Mama Rosa, but they hear it differently.
 
 import * as THREE from 'three';
 import { MISSIONS, ECONOMY, PLACES } from './config.js';
@@ -16,6 +18,31 @@ let tailTime = 0;
 let targetCar = null;
 let squadLeft = 0;
 let listeners = [];
+
+// How Mama Rosa pitches each job to each lead. Same job, different ears.
+const BRIEFS = {
+  lucia: {
+    1: 'Lucia — the diner package, quick and quiet. You drive, I worry.',
+    2: 'Lucia — pier, seventy-five seconds. Your footwork is the fast part.',
+    3: 'Lucia — stay on that courier till he sweats. Ten seconds close is enough.',
+    4: 'Lucia — three stars and a whole department. Lose them, then come home.',
+    5: 'Lucia — five of the rival crew in the alley. On foot. Make it clean.',
+    6: 'Lucia — five stars, one car, one safehouse. Drive like you mean it.',
+  },
+  jason: {
+    1: 'Jason — diner package. Carry it like it owes you money.',
+    2: 'Jason — pier run, clock ticking. Heavy foot, no shortcuts through walls.',
+    3: 'Jason — tail the courier. He cracks faster when something big follows him.',
+    4: 'Jason — three stars. Shake them off and bring that car home in one piece.',
+    5: 'Jason — five of the rival crew in the alley. This one was made for you.',
+    6: 'Jason — five stars, one car, one safehouse. They will remember this ride.',
+  },
+};
+
+export function getMissionBrief(id, charId = 'lucia') {
+  const lines = BRIEFS[charId] || BRIEFS.lucia;
+  return lines[id] || missionById(id)?.blurb || '';
+}
 
 function makeBeacon() {
   const geo = new THREE.CylinderGeometry(3.2, 3.2, 26, 20, 1, true);
@@ -165,19 +192,20 @@ export function updateMissions(dt, ctx) {
 }
 
 // The HUD reads this every frame: short objective line + progress.
-export function objectiveText(doneList) {
+// Pass the active lead so the line speaks in their voice.
+export function objectiveText(doneList, charId = 'lucia') {
   if (state === 'active') {
     const m = missionById(activeId);
     let extra = '';
     if (m.kind === 'tail') extra = ` — on his tail ${Math.floor(tailTime)}/10s`;
     if (m.kind === 'shoot') extra = ` — crew left: ${squadLeft}`;
     if (m.timeLimit > 0) extra += ` — ${Math.max(0, Math.ceil(timer))}s`;
-    return `${m.name}: ${m.blurb}${extra}`;
+    return `${m.name}: ${getMissionBrief(m.id, charId)}${extra}`;
   }
   const next = nextMissionId(doneList);
   if (next === 0) return 'All missions complete — Palmetto City is yours. Free roam!';
   const m = missionById(next);
-  return `Next: ${m.name} — press E to start (${m.blurb})`;
+  return `Next: ${m.name} — press E to start (${getMissionBrief(m.id, charId)})`;
 }
 
 export function setSquadLeft(n) { squadLeft = n; }

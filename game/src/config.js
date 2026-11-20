@@ -28,6 +28,34 @@ export const CAR = {
   radius: 2.2,
 };
 
+// Drift tuning: handbrake slides, score banks when the slide ends.
+export const DRIFT = {
+  minSpeed: 8,        // m/s before a slide counts as a drift
+  scoreRate: 2.0,     // points per m/s per second while sliding
+  minBank: 25,        // points before a drift pays out
+  cashPerPoint: 0.1,  // $ per banked drift point
+};
+
+// Armour sits in front of health: damage eats armour first, then health.
+// It regrows slowly after a quiet stretch with no damage taken.
+export const ARMOR = {
+  regenDelay: 10,     // seconds without damage before regrowth starts
+  regenRate: 6,       // armour points per second while regrowing
+};
+
+// Weather and the day/night clock. One game day is eight real minutes;
+// rain rolls in on its own timer, storms flash lightning.
+export const WEATHER = {
+  dayLength: 480,     // seconds per full game day
+  startHour: 10.5,    // 10:30 in the morning
+};
+
+// Synthwave BGM: 100 BPM in A minor, bass + arp + pad + kick.
+export const BGM = {
+  bpm: 100,
+  busVolume: 0.16,
+};
+
 export const WANTED_RULES = {
   maxStars: 5,
   decaySeconds: 15,   // quiet time before one star drops
@@ -36,6 +64,7 @@ export const WANTED_RULES = {
   hurtPed: 1,
   killPed: 2,
   ramCop: 2,
+  reckless: 1,        // drifting past a cop car, or a horn blast in their face
   copShootAtStars: 3, // cops open fire at 3+ stars
   heliAtStars: 5,
 };
@@ -75,6 +104,10 @@ export const KEYS = {
   shoot: 'Mouse0',
   sprint: 'ShiftLeft',
   restart: 'KeyR',
+  swapChar: 'KeyQ',   // Lucia <-> Jason
+  music: 'KeyM',      // synthwave BGM on / off
+  wave: 'KeyT',       // wave at other drivers (multiplayer)
+  horn: 'KeyH',       // car horn; scares peds, annoys cops
 };
 
 // Sun-soaked Palmetto City palette: warm plaster, teal sea air, hot asphalt.
