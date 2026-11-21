@@ -1,3 +1,4 @@
+// A 100 BPM synthwave loop whose mood (day, night, chase) follows the wanted level and the clock.
 // Palmetto Heat — synthwave BGM, synthesized live, no audio files.
 // A 100 BPM loop in A minor: saw bass on the eighths, a square arp on the
 // sixteenths, a slow pad under Am–F–C–G, and a sine kick on the beat. A

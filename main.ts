@@ -1,53 +1,60 @@
-// Palmetto Heat — the gta6-01 entry program (Node 22, standard library only).
-// Hands the game in: copies this file's game/ and screenshots/ into the
-// output directory and writes dossier.json with the kit's buildDossier.
-// Local run: mkdir out, then MAKEFUN_OUTPUT_DIR=out node main.ts.
-// The scorer leaves MAKEFUN_OUTPUT_DIR unset and uses /output.
-// --check-only validates without writing anything.
+// Palmetto Heat — make.fun entrypoint (Node 22, standard library only).
+// Copies game/ and screenshots/ into the output directory and writes
+// dossier.json there with the kit's buildDossier library.
+//   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+// Without MAKEFUN_OUTPUT_DIR the output directory is /output.
+//   node main.ts --check-only   only validates, writes nothing.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
-const here = fileURLToPath(new URL('.', import.meta.url));
+const here = dirname(fileURLToPath(import.meta.url));
 const outDir = process.env.MAKEFUN_OUTPUT_DIR || '/output';
 const checkOnly = process.argv.includes('--check-only');
-const MAX_SHOT_BYTES = 256 * 1024;
-// The platform caps a handed-in dossier at 1.5 MiB, tighter than the
-// library's own 4 MiB, so the entry refuses anything over it here first.
-const DOSSIER_MAX_BYTES = 1.5 * 1024 * 1024;
+const gameDir = join(here, 'game');
+const shotsDir = join(here, 'screenshots');
+const indexHtml = join(gameDir, 'index.html');
+const MAX_SHOT_BYTES = 262144;
 
-function fail(message) {
+function fail(message: string): never {
   console.error(`Palmetto Heat entry check failed: ${message}`);
   process.exit(1);
 }
 
-// Preflight, in the same shape as the sealed scorer: the game page must
-// exist, the screenshots must be 3 or 4 files, each at most 256 KiB.
-const gameIndex = join(here, 'game', 'index.html');
-if (!existsSync(gameIndex)) fail('game/index.html: no such file');
-const shotsDir = join(here, 'screenshots');
-if (!existsSync(shotsDir)) fail('screenshots/: no such directory');
-const shotNames = readdirSync(shotsDir).filter((n) => !n.startsWith('.')).sort();
-if (shotNames.length < 3 || shotNames.length > 4) {
-  fail(`screenshots: expected 3 to 4, found ${shotNames.length} (${shotNames.join(', ')})`);
+// ---- Preflight: the same checks the sealed scorer runs, before copying. ----
+if (!existsSync(indexHtml)) fail('game/index.html is missing');
+if (!existsSync(shotsDir) || !statSync(shotsDir).isDirectory()) {
+  fail('screenshots/ directory is missing');
 }
-for (const name of shotNames) {
+const shots = readdirSync(shotsDir)
+  .filter((name) => !name.startsWith('.'))
+  .sort();
+if (shots.length < 3 || shots.length > 4) {
+  fail(`expected 3 to 4 screenshots, found ${shots.length}: ${shots.join(', ') || '(none)'}`);
+}
+for (const name of shots) {
+  if (!/\.(png|jpe?g)$/i.test(name)) {
+    fail(`screenshot ${name} is not a PNG or JPEG image`);
+  }
   const bytes = statSync(join(shotsDir, name)).size;
-  if (bytes > MAX_SHOT_BYTES) fail(`screenshots/${name}: ${bytes} bytes, over the ${MAX_SHOT_BYTES} allowed`);
+  if (bytes > MAX_SHOT_BYTES) {
+    fail(`screenshot ${name} is ${bytes} bytes, over the 262144 byte limit`);
+  }
 }
-console.log(`preflight ok: ${shotNames.length} screenshots (${shotNames.join(', ')}), game/index.html present`);
+console.log(`preflight ok: ${shots.length} screenshots (${shots.join(', ')}), game/index.html present`);
 if (checkOnly) {
-  console.log('check-only: validated, nothing written');
+  console.log('check-only: validated, wrote nothing');
   process.exit(0);
 }
 
+// ---- Output: fresh game/ + screenshots/, then the dossier. ----
 mkdirSync(outDir, { recursive: true });
 rmSync(join(outDir, 'game'), { recursive: true, force: true });
 rmSync(join(outDir, 'screenshots'), { recursive: true, force: true });
 rmSync(join(outDir, 'dossier.json'), { force: true });
-cpSync(join(here, 'game'), join(outDir, 'game'), { recursive: true });
+cpSync(gameDir, join(outDir, 'game'), { recursive: true });
 mkdirSync(join(outDir, 'screenshots'), { recursive: true });
 cpSync(shotsDir, join(outDir, 'screenshots'), { recursive: true });
 
@@ -58,6 +65,9 @@ const dossier = buildDossier(outDir, {
   game_max_bytes: 50331648,
   game_path_max_bytes: 1000,
 });
-if (dossier.length > DOSSIER_MAX_BYTES) fail(`dossier.json: ${dossier.length} bytes, over the ${DOSSIER_MAX_BYTES} allowed`);
-writeFileSync(join(outDir, 'dossier.json'), dossier);
-console.log(`dossier ${dossier.length} bytes, ${shotNames.length} screenshots, written to ${outDir}`);
+const dossierBytes = Buffer.isBuffer(dossier) ? dossier : Buffer.from(dossier);
+if (dossierBytes.length > 1.5 * 1024 * 1024) {
+  fail(`dossier is ${dossierBytes.length} bytes, over the 1.5 MiB limit`);
+}
+writeFileSync(join(outDir, 'dossier.json'), dossierBytes);
+console.log(`dossier written: ${dossierBytes.length} bytes, ${shots.length} screenshots, ${join(outDir, 'dossier.json')}`);

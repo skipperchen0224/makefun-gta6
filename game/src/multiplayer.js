@@ -1,3 +1,4 @@
+// Optional lobby client: sends position snapshots, receives other drivers, chat and waves.
 // Palmetto Heat — WebSocket multiplayer (optional, ?mp=1).
 // serve.ts runs a tiny lobby on the same port: no accounts, no deps, just
 // positions and chat. This client sends its own snapshot ten times a

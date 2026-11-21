@@ -1,3 +1,4 @@
+// Stars rise per crime, decay after fifteen quiet seconds, and drive how many cops spawn.
 // Palmetto Heat — wanted level, 0 to 5 stars.
 // Crimes add heat; quiet time decays it. Listeners (HUD, cops) subscribe to
 // level changes. The rules live in config.js; this module only keeps score.

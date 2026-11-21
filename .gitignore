@@ -3,3 +3,4 @@ out/
 .DS_Store
 # Round 4: staging PNGs before they are converted to dossier JPEGs
 screenshots/*.png
+# Staging PNGs stay local; only the converted dossier JPEGs are committed.

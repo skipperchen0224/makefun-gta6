@@ -1,3 +1,4 @@
+// The particle pool: smoke puffs and impact sparks, spawned and recycled every frame.
 // Palmetto Heat — a tiny entity-component-system.
 // The older modules each own their objects; new effects go through this
 // instead: an entity is an id, components are plain data in maps, systems

@@ -1,3 +1,4 @@
+// One place for every number the game tunes: world, cars, drift, armour, weather, wanted, missions.
 // Palmetto Heat — global tuning and mission table.
 // One place for every number a designer would tweak: world size, car feel,
 // wanted rules, payouts and the six story missions Mama Rosa hands out.

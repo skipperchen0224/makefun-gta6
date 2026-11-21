@@ -1,137 +1,102 @@
-// Palmetto Heat — the procedural palm city: a seeded block grid, roads on
-// every block line, buildings inside the blocks, palms along the sidewalks,
-// collision boxes for everyone else to steer around. No randomness at
-// runtime: the seed comes from the URL, so screenshots are reproducible.
-// Lamps line the avenues and come on after dark.
+// Palmetto Heat — the city: seed-grown blocks, roads, palms, lamps and landmarks.
+// One deterministic build from a seed: the same ?seed= always grows the same
+// streets, so every screenshot is reproducible. Static props (roof caps, AC
+// units, palm trunks and crowns, lamp posts and heads, road dashes) are
+// batched into one InstancedMesh per kind per tile, and culled per frame
+// against the camera frustum. At night the windows glow and the lamps come on.
 
 import * as THREE from 'three';
-import { WORLD, PALETTE, PLACES, clamp, mulberry32 } from './config.js';
+import { WORLD, PALETTE, PLACES, mulberry32 } from './config.js';
 
-// ---- module state ---------------------------------------------------------
-const colliders = [];          // { minX, maxX, minZ, maxZ } per building/landmark
-const roadLines = [];          // { axis, at } — one per road, for traffic and spawns
+const colliders = [];
+const roadLines = [];
 let cityGroup = null;
-let lampHeadMat = null;        // shared by every lamp head in the city
+let lampMat = null;
 let roadMat = null;
-const buildingMats = [];       // one Lambert material per building (window glow)
-let propKits = null;           // kind -> { geometry, material, tiles: Map<key, Matrix4[]> }
-const TILE = WORLD.block * 3;  // prop tiles are three blocks wide
-const propTiles = [];          // { mesh, matrices, spheres, visible } per kind per tile
+const buildingMats = [];
+let props = {};
+const TILE = WORLD.block * 3;
+const propTiles = [];
 const frustum = new THREE.Frustum();
-const viewProj = new THREE.Matrix4();
+const projView = new THREE.Matrix4();
+const dummy = new THREE.Object3D();
 
-const LAMP_DAY = 0x4a4f55;     // lamp head by day: dull grey
-const LAMP_NIGHT = 0xffe9a8;   // lamp head by night: warm yellow
-const SAND = 0xe8d9a0;
-const SEA = 0x2e7fa8;
-const ROOF_BROWN = 0x6b4a2f;
-const AC_GREY = 0x9aa0a6;
-const POLE_BLUE = 0x2c3e50;
-const SIGN_CREAM = 0xf2ead8;
-
-// ---- helpers --------------------------------------------------------------
-
-/** A hex number as a CSS colour string: 0xffe9a8 -> '#ffe9a8'. */
 function hexCss(n) {
   return `#${n.toString(16).padStart(6, '0')}`;
 }
 
-/**
- * One building's window textures: a 64x128 base canvas and a 64x128 black
- * emissive canvas. Windows sit in a 4x8 grid (15px cells, 10x9 windows,
- * offset 4,6); each window lights with probability 0.35, warm yellow when
- * lit, dark blue-grey when not, and a lit window is painted on the glow
- * canvas in the same spot. Returns { map, glow }.
- */
-function makeWindowTexture(rng, baseCss) {
-  const base = document.createElement('canvas');
-  base.width = 64;
-  base.height = 128;
-  const g = base.getContext('2d');
-  g.fillStyle = baseCss;
-  g.fillRect(0, 0, 64, 128);
+// Paint a building face: a 4x8 grid of windows on a 64x128 canvas, plus a
+// second canvas that only carries the lit windows (black elsewhere) so the
+// night glow can be switched on by swapping the emissive map.
+function makeWindowMaps(rng, base) {
+  const baseCanvas = document.createElement('canvas');
+  baseCanvas.width = 64;
+  baseCanvas.height = 128;
   const glowCanvas = document.createElement('canvas');
   glowCanvas.width = 64;
   glowCanvas.height = 128;
-  const gg = glowCanvas.getContext('2d');
-  gg.fillStyle = '#000000';
-  gg.fillRect(0, 0, 64, 128);
-  for (let c = 0; c < 4; c++) {
-    for (let r = 0; r < 8; r++) {
-      const x = 4 + c * 15;
-      const y = 6 + r * 15;
-      if (rng() < 0.35) {
-        g.fillStyle = '#ffe9a8';
-        g.fillRect(x, y, 10, 9);
-        gg.fillStyle = '#ffe9a8';
-        gg.fillRect(x, y, 10, 9);
-      } else {
-        g.fillStyle = '#2c3e50';
+  const b = baseCanvas.getContext('2d');
+  const g = glowCanvas.getContext('2d');
+  b.fillStyle = base;
+  b.fillRect(0, 0, 64, 128);
+  g.fillStyle = '#000000';
+  g.fillRect(0, 0, 64, 128);
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 4; col++) {
+      const x = 4 + col * 15;
+      const y = 6 + row * 15;
+      const lit = rng() < 0.35;
+      const color = lit ? hexCss(PALETTE.windowLit) : hexCss(PALETTE.windowDark);
+      b.fillStyle = color;
+      b.fillRect(x, y, 10, 9);
+      if (lit) {
+        g.fillStyle = hexCss(PALETTE.windowLit);
         g.fillRect(x, y, 10, 9);
       }
     }
   }
-  const map = new THREE.CanvasTexture(base);
+  const map = new THREE.CanvasTexture(baseCanvas);
   map.colorSpace = THREE.SRGBColorSpace;
   const glow = new THREE.CanvasTexture(glowCanvas);
   glow.colorSpace = THREE.SRGBColorSpace;
   return { map, glow };
 }
 
-// ---- prop system (instanced static props) ---------------------------------
-
-/** Queue one instance of a prop kind: position, scale, tilt about X, spin about Y. */
-function addProp(kind, x, y, z, sx = 1, sy = 1, sz = 1, rotX = 0, rotY = 0) {
-  const kit = propKits[kind];
-  if (!kit) return;
-  const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(rotX, rotY, 0));
-  m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(sx, sy, sz));
-  const key = `${Math.floor(x / TILE)},${Math.floor(z / TILE)}`;
-  if (!kit.tiles.has(key)) kit.tiles.set(key, []);
-  kit.tiles.get(key).push(m);
-}
-
-/** One building: a textured box, an instanced roof cap, maybe an AC unit. */
 function addBuilding(scene, rng, cx, cz, w, d) {
   const h = 8 + rng() * 30;
   const color = PALETTE.building[Math.floor(rng() * PALETTE.building.length)];
-  const tex = makeWindowTexture(rng, hexCss(color));
+  const { map, glow } = makeWindowMaps(rng, hexCss(color));
   const mat = new THREE.MeshLambertMaterial({
-    map: tex.map, emissive: 0xffffff, emissiveIntensity: 0,
+    map, emissive: 0xffffff, emissiveIntensity: 0,
   });
-  mat.userData['窗户辉光'] = tex.glow;
+  mat.userData.windowGlow = glow;
   buildingMats.push(mat);
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
-  mesh.position.set(cx, h / 2, cz);
-  cityGroup.add(mesh);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+  body.position.set(cx, h / 2, cz);
+  scene.add(body);
   addProp('roof', cx, h + 0.3, cz, w + 0.4, 0.6, d + 0.4);
   colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
-  if (h > 24) addProp('ac', cx + w * 0.2, h + 1.4, cz - d * 0.15);
+  if (h > 24) {
+    addProp('ac', cx + w * 0.2, h + 1.4, cz - d * 0.15);
+  }
 }
 
-/** One palm: an instanced trunk (slight random lean) and an instanced crown. */
 function addPalm(scene, rng, x, z) {
-  addProp('trunk', x, 2.6, z, 1, 1, 1, 0, (rng() - 0.5) * 0.16);
-  addProp('leaves', x, 5.8, z);
+  addProp('trunk', x, 2.6, z, 1, 1, 1, (rng() - 0.5) * 0.16, 0);
+  addProp('leaf', x, 5.8, z);
 }
 
-/** One street lamp: an instanced pole and an instanced head (shared material). */
 function addLamp(scene, x, z) {
   addProp('pole', x, 3.2, z);
   addProp('lamp', x, 6.5, z);
 }
 
-/**
- * Night mode for the city: lamp heads go warm yellow (dull grey by day),
- * the road glows faintly blue, and every building's window-glow map is
- * hung on its material at intensity 1 (taken off again by day).
- */
 export function setNightMode(on) {
-  if (lampHeadMat) lampHeadMat.color.setHex(on ? LAMP_NIGHT : LAMP_DAY);
+  if (lampMat) lampMat.color.setHex(on ? PALETTE.windowLit : 0x4a4f55);
   if (roadMat) roadMat.emissiveIntensity = on ? 0.3 : 0;
   for (const mat of buildingMats) {
-    const next = on ? mat.userData['窗户辉光'] : null;
+    const glow = mat.userData.windowGlow || null;
+    const next = on ? glow : null;
     if (mat.emissiveMap !== next) {
       mat.emissiveMap = next;
       mat.needsUpdate = true;
@@ -140,50 +105,55 @@ export function setNightMode(on) {
   }
 }
 
-// ---- city build -----------------------------------------------------------
-
 export function buildCity(scene, seed = 1) {
   const rng = mulberry32(seed);
   cityGroup = new THREE.Group();
   scene.add(cityGroup);
   const half = WORLD.size / 2;
   const step = WORLD.block;
+  lampMat = new THREE.MeshBasicMaterial({ color: 0x4a4f55 });
+  buildingMats.length = 0;
   colliders.length = 0;
   roadLines.length = 0;
   propTiles.length = 0;
-  buildingMats.length = 0;
-  lampHeadMat = new THREE.MeshBasicMaterial({ color: LAMP_DAY });
 
-  const makeKit = (geometry, material) => ({ geometry, material, tiles: new Map() });
-  const lambert = (color) => new THREE.MeshLambertMaterial({ color });
-  propKits = {
-    roof: makeKit(new THREE.BoxGeometry(1, 1, 1), lambert(ROOF_BROWN)),
-    ac: makeKit(new THREE.BoxGeometry(3, 1.6, 3), lambert(AC_GREY)),
-    trunk: makeKit(new THREE.CylinderGeometry(0.22, 0.34, 5.2, 6, 1, true), lambert(PALETTE.palmTrunk)),
-    leaves: makeKit(new THREE.ConeGeometry(2.4, 2.2, 7), lambert(PALETTE.palmLeaf)),
-    pole: makeKit(new THREE.CylinderGeometry(0.09, 0.12, 6.4, 6, 1, true), lambert(POLE_BLUE)),
-    lamp: makeKit(new THREE.SphereGeometry(0.32, 10, 8), lampHeadMat),
-    dash: makeKit(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: PALETTE.roadLine })),
+  function makeProp(geometry, material) {
+    return { geo: geometry, mat: material, tiles: new Map() };
+  }
+  props = {
+    roof: makeProp(new THREE.BoxGeometry(1, 1, 1),
+      new THREE.MeshLambertMaterial({ color: 0x5a3d2b })),
+    ac: makeProp(new THREE.BoxGeometry(3, 1.6, 3),
+      new THREE.MeshLambertMaterial({ color: 0x8a8f96 })),
+    trunk: makeProp(new THREE.CylinderGeometry(0.22, 0.34, 5.2, 6, 1, true),
+      new THREE.MeshLambertMaterial({ color: PALETTE.palmTrunk })),
+    leaf: makeProp(new THREE.ConeGeometry(2.4, 2.2, 7),
+      new THREE.MeshLambertMaterial({ color: PALETTE.palmLeaf })),
+    pole: makeProp(new THREE.CylinderGeometry(0.09, 0.12, 6.4, 6, 1, true),
+      new THREE.MeshLambertMaterial({ color: 0x2e3a4a })),
+    lamp: makeProp(new THREE.SphereGeometry(0.32, 10, 8), lampMat),
+    dash: makeProp(new THREE.PlaneGeometry(1, 1),
+      new THREE.MeshBasicMaterial({ color: PALETTE.roadLine })),
   };
 
   // Ground, beach, sea.
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(WORLD.size + 160, WORLD.size + 160),
-    lambert(PALETTE.ground),
+    new THREE.MeshLambertMaterial({ color: PALETTE.ground }),
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.05;
   cityGroup.add(ground);
   const beach = new THREE.Mesh(
     new THREE.PlaneGeometry(60, WORLD.size + 160),
-    lambert(SAND),
+    new THREE.MeshLambertMaterial({ color: 0xe8d9a0 }),
   );
   beach.rotation.x = -Math.PI / 2;
   beach.position.set(half + 30, 0, 0);
   cityGroup.add(beach);
   const sea = new THREE.Mesh(
     new THREE.PlaneGeometry(220, WORLD.size + 160),
-    lambert(SEA),
+    new THREE.MeshLambertMaterial({ color: 0x2e7fa8 }),
   );
   sea.rotation.x = -Math.PI / 2;
   sea.position.set(half + 170, -0.2, 0);
@@ -191,36 +161,37 @@ export function buildCity(scene, seed = 1) {
 
   // Roads and sidewalks on every grid line.
   roadMat = new THREE.MeshLambertMaterial({
-    color: PALETTE.road, emissive: 0x0e1a2e, emissiveIntensity: 0,
+    color: PALETTE.road, emissive: 0x182d48, emissiveIntensity: 0,
   });
-  const sidewalkMat = lambert(PALETTE.sidewalk);
-  const sideOff = WORLD.roadWidth / 2 + 2;
-  for (let p = -half; p <= half; p += step) {
-    const roadX = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.size, WORLD.roadWidth), roadMat);
-    roadX.rotation.x = -Math.PI / 2;
-    roadX.position.set(0, 0.02, p);
-    cityGroup.add(roadX);
-    const roadZ = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.roadWidth, WORLD.size), roadMat);
-    roadZ.rotation.x = -Math.PI / 2;
-    roadZ.position.set(p, 0.02, 0);
-    cityGroup.add(roadZ);
-    roadLines.push({ axis: 'x', at: p }, { axis: 'z', at: p });
-    for (const s of [-sideOff, sideOff]) {
-      const walkX = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.size, 4), sidewalkMat);
+  const walkMat = new THREE.MeshLambertMaterial({ color: PALETTE.sidewalk });
+  for (let pos = -half; pos <= half; pos += step) {
+    const alongX = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.size, WORLD.roadWidth), roadMat);
+    alongX.rotation.x = -Math.PI / 2;
+    alongX.position.set(0, 0.02, pos);
+    cityGroup.add(alongX);
+    const alongZ = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.roadWidth, WORLD.size), roadMat);
+    alongZ.rotation.x = -Math.PI / 2;
+    alongZ.position.set(pos, 0.02, 0);
+    cityGroup.add(alongZ);
+    roadLines.push({ axis: 'x', at: pos });
+    roadLines.push({ axis: 'z', at: pos });
+    const off = WORLD.roadWidth / 2 + 2;
+    for (const side of [-1, 1]) {
+      const walkX = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.size, 4), walkMat);
       walkX.rotation.x = -Math.PI / 2;
-      walkX.position.set(0, 0.01, p + s);
+      walkX.position.set(0, 0.01, pos + side * off);
       cityGroup.add(walkX);
-      const walkZ = new THREE.Mesh(new THREE.PlaneGeometry(4, WORLD.size), sidewalkMat);
+      const walkZ = new THREE.Mesh(new THREE.PlaneGeometry(4, WORLD.size), walkMat);
       walkZ.rotation.x = -Math.PI / 2;
-      walkZ.position.set(p + s, 0.01, 0);
+      walkZ.position.set(pos + side * off, 0.01, 0);
       cityGroup.add(walkZ);
     }
   }
 
-  // Dashed centre lines down the two central avenues.
-  for (let d = -half; d <= half; d += 12) {
-    addProp('dash', d, 0.04, 0, 5, 0.5, 1, -Math.PI / 2, 0);
-    addProp('dash', 0, 0.04, d, 0.5, 5, 1, -Math.PI / 2, 0);
+  // Centre-line dashes down the two central avenues.
+  for (let p = -half; p <= half; p += 12) {
+    addProp('dash', p, 0.04, 0, 5, 0.5, 1, -Math.PI / 2, 0);
+    addProp('dash', 0, 0.04, p, 0.5, 5, 1, -Math.PI / 2, 0);
   }
 
   // Buildings, one or two per block.
@@ -228,169 +199,176 @@ export function buildCity(scene, seed = 1) {
   for (let cx = -half + step / 2; cx <= half - step / 2; cx += step) {
     for (let cz = -half + step / 2; cz <= half - step / 2; cz += step) {
       if (Math.abs(cx) < 30 && Math.abs(cz - 100) < 30) continue; // spawn plaza
-      if (cx === half - step / 2) continue; // eastern column stays low (beach)
+      if (cx >= half - step / 2) continue; // beachfront blocks stay low
       if (rng() < 0.55) {
-        addBuilding(scene, rng, cx, cz, inner, inner);
+        addBuilding(cityGroup, rng, cx, cz, inner, inner);
       } else {
-        const w = inner / 2 - 2;
-        addBuilding(scene, rng, cx - inner / 4, cz, w, inner);
-        addBuilding(scene, rng, cx + inner / 4, cz, w, inner);
+        addBuilding(cityGroup, rng, cx - inner / 4, cz, inner / 2 - 2, inner);
+        addBuilding(cityGroup, rng, cx + inner / 4, cz, inner / 2 - 2, inner);
       }
     }
   }
 
-  // Palms along the central avenue and the beach front, three per stop.
-  for (let t = -half; t <= half; t += 28) {
-    addPalm(scene, rng, -8, t);
-    addPalm(scene, rng, 8, t + 14);
-    addPalm(scene, rng, half - 8, t + 7);
+  // Palms along the central avenue and the beachfront.
+  for (let z = -half; z <= half; z += 28) {
+    addPalm(cityGroup, rng, -8, z);
+    addPalm(cityGroup, rng, 8, z + 14);
+    addPalm(cityGroup, rng, half - 12, z + 7);
   }
 
-  // Lamps along both central avenues, staggered on both sides.
-  for (let t = -half; t <= half; t += 40) {
-    addLamp(scene, -7, t);
-    addLamp(scene, 7, t + 20);
-    addLamp(scene, t, -7);
-    addLamp(scene, t + 20, 7);
+  // Lamps along both central avenues, staggered.
+  for (let p = -half; p <= half; p += 40) {
+    addLamp(cityGroup, -7, p);
+    addLamp(cityGroup, 7, p + 20);
+    addLamp(cityGroup, p, -7);
+    addLamp(cityGroup, p + 20, 7);
   }
 
-  // Landmarks: a coloured box and a sign each, plus a collision box.
-  const LANDMARKS = [
-    ['diner', 7, 0xff7a1a],
-    ['pier', 6, 0x3f6fb5],
-    ['safehouse', 6, 0x2e8b6a],
-    ['alley', 9, 0x7a5fc0],
+  // Landmarks: a coloured box and a sign each.
+  const landmarkDefs = [
+    { name: 'diner', h: 7, color: 0xe87ab0 },
+    { name: 'pier', h: 6, color: 0x3f6fb5 },
+    { name: 'safehouse', h: 6, color: 0x2e8b6a },
+    { name: 'alley', h: 9, color: 0x7a5fc0 },
   ];
-  const signMat = new THREE.MeshBasicMaterial({ color: SIGN_CREAM });
-  for (const [name, h, color] of LANDMARKS) {
-    const pos = PLACES[name];
-    const box = new THREE.Mesh(new THREE.BoxGeometry(14, h, 10), lambert(color));
-    box.position.set(pos.x, h / 2, pos.z);
+  for (const def of landmarkDefs) {
+    const place = PLACES[def.name];
+    if (!place) continue;
+    const box = new THREE.Mesh(
+      new THREE.BoxGeometry(14, def.h, 10),
+      new THREE.MeshLambertMaterial({ color: def.color }),
+    );
+    box.position.set(place.x, def.h / 2, place.z);
     cityGroup.add(box);
-    const sign = new THREE.Mesh(new THREE.BoxGeometry(10, 2.2, 0.6), signMat);
-    sign.position.set(pos.x, h + 1.6, pos.z);
+    const sign = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 2.2, 0.6),
+      new THREE.MeshBasicMaterial({ color: 0xf2ead8 }),
+    );
+    sign.position.set(place.x, def.h + 1.6, place.z);
     cityGroup.add(sign);
-    colliders.push({ minX: pos.x - 7, maxX: pos.x + 7, minZ: pos.z - 5, maxZ: pos.z + 5 });
+    colliders.push({
+      minX: place.x - 7, maxX: place.x + 7,
+      minZ: place.z - 5, maxZ: place.z + 5,
+    });
   }
 
   // Bake every prop kind into one InstancedMesh per tile.
-  for (const [kind, kit] of Object.entries(propKits)) {
-    kit.geometry.computeBoundingBox();
-    kit.geometry.computeBoundingSphere();
-    for (const matrices of kit.tiles.values()) {
-      const mesh = new THREE.InstancedMesh(kit.geometry, kit.material, matrices.length);
-      for (let i = 0; i < matrices.length; i++) mesh.setMatrixAt(i, matrices[i]);
+  for (const kind of Object.keys(props)) {
+    const def = props[kind];
+    def.geo.computeBoundingBox();
+    def.geo.computeBoundingSphere();
+    const useBox = kind === 'roof' || kind === 'dash';
+    for (const [key, matrices] of def.tiles) {
+      if (matrices.length === 0) continue;
+      const mesh = new THREE.InstancedMesh(def.geo, def.mat, matrices.length);
+      const spheres = [];
+      for (let i = 0; i < matrices.length; i++) {
+        mesh.setMatrixAt(i, matrices[i]);
+        const sphere = useBox
+          ? new THREE.Box3().copy(def.geo.boundingBox).applyMatrix4(matrices[i])
+            .getBoundingSphere(new THREE.Sphere())
+          : def.geo.boundingSphere.clone().applyMatrix4(matrices[i]);
+        spheres.push(sphere);
+      }
       mesh.instanceMatrix.needsUpdate = true;
       mesh.computeBoundingSphere();
-      const spheres = matrices.map((m) => {
-        if (kind === 'roof' || kind === 'dash') {
-          // Non-uniformly scaled box/plane: box through the matrix, then a sphere.
-          return kit.geometry.boundingBox.clone().applyMatrix4(m).getBoundingSphere(new THREE.Sphere());
-        }
-        return kit.geometry.boundingSphere.clone().applyMatrix4(m);
-      });
       propTiles.push({
-        mesh,
-        matrices,
-        spheres,
+        mesh, matrices, spheres,
         visible: matrices.map((_, i) => i),
       });
       cityGroup.add(mesh);
     }
   }
-  propKits = null; // temporary build data, released
+  props = {};
 }
 
-// ---- queries --------------------------------------------------------------
-
-/** The building and landmark collision boxes. */
 export function getColliders() {
   return colliders;
 }
 
-/** A random point on a road: a road line snapped to the block pitch, then anywhere along it. */
 export function randomRoadPoint(rng, margin = 20) {
   const half = WORLD.size / 2 - margin;
-  const lines = WORLD.size / WORLD.block;
-  const linePos = -WORLD.size / 2 + Math.floor(rng() * lines) * WORLD.block;
-  if (rng() < 0.5) return { x: (rng() * 2 - 1) * half, z: linePos, axis: 'x' };
-  return { x: linePos, z: (rng() * 2 - 1) * half, axis: 'z' };
+  const axis = rng() < 0.5 ? 'x' : 'z';
+  const line = Math.round(((rng() * 2 - 1) * half) / WORLD.block) * WORLD.block;
+  const along = (rng() * 2 - 1) * half;
+  return axis === 'x' ? { x: along, z: line, axis } : { x: line, z: along, axis };
 }
 
-/** Snap a point to its nearest road line, and say which way that road runs. */
 export function snapToRoad(x, z) {
-  const rx = Math.round(x / WORLD.block) * WORLD.block;
-  const rz = Math.round(z / WORLD.block) * WORLD.block;
-  if (Math.abs(x - rx) <= Math.abs(z - rz)) return { x: rx, z, axis: 'z' };
-  return { x, z: rz, axis: 'x' };
+  const lineX = Math.round(x / WORLD.block) * WORLD.block;
+  const lineZ = Math.round(z / WORLD.block) * WORLD.block;
+  if (Math.abs(x - lineX) < Math.abs(z - lineZ)) {
+    return { x: lineX, z, axis: 'z' };
+  }
+  return { x, z: lineZ, axis: 'x' };
 }
 
-/**
- * Push a circle out of every collision box it overlaps (or out along the
- * shallowest axis when its centre is inside one), then clamp to the world.
- */
-export function resolveCircleCollision(x, z, radius) {
-  let nx = x;
-  let nz = z;
-  for (const b of colliders) {
-    const cx = clamp(nx, b.minX, b.maxX);
-    const cz = clamp(nz, b.minZ, b.maxZ);
-    const dx = nx - cx;
-    const dz = nz - cz;
+export function resolveCircleCollision(x, z, r) {
+  for (const box of colliders) {
+    const cx = Math.max(box.minX, Math.min(x, box.maxX));
+    const cz = Math.max(box.minZ, Math.min(z, box.maxZ));
+    const dx = x - cx;
+    const dz = z - cz;
     const d2 = dx * dx + dz * dz;
-    if (d2 >= radius * radius) continue;
-    if (d2 > 0.0001) {
+    if (d2 < r * r && d2 > 0.0001) {
       const d = Math.sqrt(d2);
-      nx = cx + (dx / d) * radius;
-      nz = cz + (dz / d) * radius;
-    } else {
-      const pl = nx - b.minX;
-      const pr = b.maxX - nx;
-      const pt = nz - b.minZ;
-      const pb = b.maxZ - nz;
-      const m = Math.min(pl, pr, pt, pb);
-      if (m === pl) nx = b.minX - radius;
-      else if (m === pr) nx = b.maxX + radius;
-      else if (m === pt) nz = b.minZ - radius;
-      else nz = b.maxZ + radius;
+      x = cx + (dx / d) * r;
+      z = cz + (dz / d) * r;
+    } else if (d2 <= 0.0001 && x >= box.minX && x <= box.maxX && z >= box.minZ && z <= box.maxZ) {
+      const penL = x - box.minX;
+      const penR = box.maxX - x;
+      const penT = z - box.minZ;
+      const penB = box.maxZ - z;
+      const m = Math.min(penL, penR, penT, penB);
+      if (m === penL) x = box.minX - r;
+      else if (m === penR) x = box.maxX + r;
+      else if (m === penT) z = box.minZ - r;
+      else z = box.maxZ + r;
     }
   }
   const half = WORLD.size / 2;
-  return { x: clamp(nx, -half, half), z: clamp(nz, -half, half) };
+  x = Math.max(-half, Math.min(half, x));
+  z = Math.max(-half, Math.min(half, z));
+  return { x, z };
 }
 
-/** A named landmark's position from the config table, or null. */
-export function getLandmark(name) {
-  return PLACES[name] ?? null;
+export function getPlace(name) {
+  return PLACES[name] || null;
 }
 
-// ---- per-frame visibility -------------------------------------------------
+function addProp(kind, x, y, z, sx = 1, sy = 1, sz = 1, rotX = 0, rotY = 0) {
+  const def = props[kind];
+  if (!def) return;
+  dummy.position.set(x, y, z);
+  dummy.scale.set(sx, sy, sz);
+  dummy.rotation.set(rotX, rotY, 0);
+  dummy.updateMatrix();
+  const key = `${Math.floor(x / TILE)},${Math.floor(z / TILE)}`;
+  let list = def.tiles.get(key);
+  if (!list) {
+    list = [];
+    def.tiles.set(key, list);
+  }
+  list.push(dummy.matrix.clone());
+}
 
-/**
- * Frustum-cull the instanced props: a coarse pass per tile on the mesh's
- * bounding sphere, then a fine pass per instance sphere. Only visible
- * instances are written back into the front slots and counted; when the
- * visible list is unchanged, nothing is written.
- */
 export function updateCityVisibility(camera) {
   camera.updateMatrixWorld();
-  viewProj.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-  frustum.setFromProjectionMatrix(viewProj);
+  projView.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  frustum.setFromProjectionMatrix(projView);
   for (const tile of propTiles) {
-    if (!tile.mesh.boundingSphere) continue;
     if (!frustum.intersectsSphere(tile.mesh.boundingSphere)) continue;
-    const visible = [];
+    const seen = [];
     for (let i = 0; i < tile.spheres.length; i++) {
-      if (frustum.intersectsSphere(tile.spheres[i])) visible.push(i);
+      if (frustum.intersectsSphere(tile.spheres[i])) seen.push(i);
     }
-    const same = visible.length === tile.visible.length
-      && visible.every((v, i) => v === tile.visible[i]);
-    if (same) continue;
-    for (let i = 0; i < visible.length; i++) {
-      tile.mesh.setMatrixAt(i, tile.matrices[visible[i]]);
+    if (seen.length === tile.visible.length
+      && seen.every((v, i) => v === tile.visible[i])) continue;
+    for (let j = 0; j < seen.length; j++) {
+      tile.mesh.setMatrixAt(j, tile.matrices[seen[j]]);
     }
-    tile.mesh.count = visible.length;
+    tile.mesh.count = seen.length;
     tile.mesh.instanceMatrix.needsUpdate = true;
-    tile.visible = visible;
+    tile.visible = seen;
   }
 }

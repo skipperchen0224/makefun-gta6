@@ -1,3 +1,4 @@
+// Keyboard edges, mouse clicks, pointer-lock look and wheel zoom, reset once per frame.
 // Palmetto Heat — keyboard and mouse state.
 // Tracks held keys, edge-triggered "just pressed" keys, mouse buttons and
 // pointer-lock look deltas. One `resetFrame()` call per game tick clears edges.

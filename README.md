@@ -125,3 +125,5 @@ nearby. Everything after that is up to you.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+Round 4: windows, lamps and headlights glow at night, and the city's static props are instanced, cutting daytime draw calls from 333 to about 127.

@@ -1,3 +1,4 @@
+// An eight-minute day, rain and storm states, and the onNight hook the whole city listens to.
 // Palmetto Heat — weather and the day/night cycle.
 // A 24-hour game clock runs over eight real minutes. The sun swings on it:
 // dawn amber, noon white, dusk orange, night blue, with the city's lamps

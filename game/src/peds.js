@@ -1,3 +1,4 @@
+// Pedestrians wander the sidewalks, flee gunfire, and form the hostile squads some missions need.
 // Palmetto Heat — pedestrians.
 // Sidewalk walkers with a tiny state machine (walk / flee / down). They dodge
 // the player's car, scatter at gunfire, and remember nothing between frames
