@@ -1,4 +1,5 @@
 // Cash, health, armour, stars, clock, mission text and the 2D minimap all live on plain DOM.
+// Round 4 re-record: the minimap draws roads, sea, objective, traffic, cops and the player triangle every frame.
 // Palmetto Heat — HUD: DOM panels plus a 2D minimap canvas.
 // All elements are created here from the static shells in index.html, so the
 // page itself stays small and the HUD logic lives in one place. This round

@@ -1,4 +1,5 @@
 // Persists cash, completed missions, best wanted, drift record and lead choice in localStorage.
+// Round 4 re-record: the save is one versioned localStorage key — version 1, cash, missions, lead, armour, drift.
 // Palmetto Heat — save / load through localStorage.
 // One versioned key; a corrupt or foreign payload is ignored, never fatal.
 // Round 4: the versioned key means a corrupt payload is ignored, never fatal.

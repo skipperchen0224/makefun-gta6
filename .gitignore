@@ -4,3 +4,4 @@ out/
 # Round 4: staging PNGs before they are converted to dossier JPEGs
 screenshots/*.png
 # Staging PNGs stay local; only the converted dossier JPEGs are committed.
+# Round 4 re-record: build outputs and local logs stay out of git; only sources, screenshots and the dossier inputs are tracked.

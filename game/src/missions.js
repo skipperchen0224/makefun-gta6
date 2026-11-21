@@ -1,4 +1,5 @@
 // Six story jobs in order, each with its own win and fail rule and a cash reward.
+// Round 4 re-record: the loop feeds positions and targets in as context, and completion comes back as events.
 // Palmetto Heat — the six story missions.
 // Each mission is a small state machine: idle -> active -> done | failed.
 // The game loop feeds it a context object (positions, speeds, targets) and

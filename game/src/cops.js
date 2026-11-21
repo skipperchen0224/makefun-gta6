@@ -1,4 +1,5 @@
 // Police spawn off-screen, chase by heading, ram at speed, and call the helicopter at five stars.
+// Round 4 re-record: cop count scales with stars — two cars at one star, six at five.
 // Palmetto Heat — police.
 // Cop cars spawn at the city edge in proportion to the wanted level, chase
 // the player, ram the car, and arrest a slow player on foot. At 3+ stars they

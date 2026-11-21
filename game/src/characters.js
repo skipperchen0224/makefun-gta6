@@ -1,4 +1,5 @@
 // Lucia is quick with light armour, Jason is tough with heavy armour; Q swaps them mid-game.
+// Round 4 re-record: Lucia and Jason share one skeleton and scale, so a swap never moves the hitbox.
 // Palmetto Heat — dual protagonists: Lucia and Jason.
 // GTA 6's spirit is a two-lead story, so Palmetto Heat has one too. Lucia
 // is the wheelwoman: quicker on foot, sharper handling, lighter armour.

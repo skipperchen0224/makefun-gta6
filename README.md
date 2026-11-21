@@ -11,6 +11,8 @@ and Mama Rosa has six jobs that will put cash in your pocket and the
 police on your tail. Palmetto City, Mama Rosa and the whole cast are
 original creations; nothing here is taken from Rockstar.
 
+Round 4 adds lit windows and street lamps after dark, and instanced city props that cut draw calls.
+
 **Play now:** https://skipperchen0224.github.io/makefun-gta6/game/index.html
 
 Prefer to run it yourself? Serve the `game/` folder locally

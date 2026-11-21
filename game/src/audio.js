@@ -1,4 +1,5 @@
 // All effects are synthesized with WebAudio oscillators and filtered noise; the game ships no sound files.
+// Round 4 re-record: the engine hum follows speed, the siren follows stars — both are oscillators, not samples.
 // Palmetto Heat — synthesized sound, no audio files.
 // Everything is WebAudio oscillators and filtered noise, built lazily on the
 // first user gesture so headless screenshot runs stay silent and error-free.
