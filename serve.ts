@@ -6,6 +6,7 @@
 // unmasked text frames out, a 5 Hz broadcast of every driver's snapshot.
 //   node serve.ts [--port 8080]
 // Open http://localhost:8080/?mp=1 in two tabs to drive together.
+// Round 4: the lobby and the static files share one port, no accounts, no deps.
 
 import { createHash } from 'node:crypto';
 import { createReadStream, statSync } from 'node:fs';

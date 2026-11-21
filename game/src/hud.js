@@ -4,6 +4,7 @@
 // adds the GTA-style extras: an armour bar under health, a character chip
 // with the in-game clock and weather, a live drift-score readout, and a
 // multiplayer badge for lobby play.
+// Round 4: the minimap draws the objective gold, cops flashing, the player green.
 
 let el = {};
 let minimap = null;

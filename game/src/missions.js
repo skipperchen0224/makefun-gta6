@@ -4,6 +4,7 @@
 // it answers with the current objective text and completion events. Each
 // mission now has a per-lead brief: Lucia and Jason get the same job from
 // Mama Rosa, but they hear it differently.
+// Round 4: each mission's brief is pitched differently to Lucia and to Jason.
 
 import * as THREE from 'three';
 import { MISSIONS, ECONOMY, PLACES } from './config.js';

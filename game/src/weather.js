@@ -3,6 +3,7 @@
 // dawn amber, noon white, dusk orange, night blue, with the city's lamps
 // coming on after dark. Weather rolls between clear, rain and storm; rain
 // is a Points cloud that follows the camera, and a storm flashes lightning.
+// Round 4: setHour moves the clock but never the night flag, so the next tick fires the change.
 
 import * as THREE from 'three';
 import { clamp } from './config.js';

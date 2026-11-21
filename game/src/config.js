@@ -1,6 +1,7 @@
 // Palmetto Heat — global tuning and mission table.
 // One place for every number a designer would tweak: world size, car feel,
 // wanted rules, payouts and the six story missions Mama Rosa hands out.
+// Round 4: PALETTE.windowLit/windowDark double as the night window-glow colours.
 
 export const WORLD = {
   size: 480,          // playable square, metres, centred on (0, 0)

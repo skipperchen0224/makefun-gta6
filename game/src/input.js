@@ -1,6 +1,7 @@
 // Palmetto Heat — keyboard and mouse state.
 // Tracks held keys, edge-triggered "just pressed" keys, mouse buttons and
 // pointer-lock look deltas. One `resetFrame()` call per game tick clears edges.
+// Round 4: wheel zoom is consumed in steps, so one scroll never zooms twice.
 // The mouse wheel now zooms the chase camera in and out (takeZoom).
 
 import { KEYS } from './config.js';

@@ -1,5 +1,6 @@
 // Palmetto Heat — save / load through localStorage.
 // One versioned key; a corrupt or foreign payload is ignored, never fatal.
+// Round 4: the versioned key means a corrupt payload is ignored, never fatal.
 // The payload now also remembers which lead you play (Lucia or Jason),
 // your armour, and your best banked drift, on top of cash and missions.
 

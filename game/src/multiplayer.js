@@ -4,6 +4,7 @@
 // second and draws the other drivers as ghost cars (or ghost leads on
 // foot) with their name floating over them. Offline play is untouched:
 // without ?mp=1 nothing ever connects.
+// Round 4: a ghost swaps its body mesh when its driver gets in or out of a car.
 
 import * as THREE from 'three';
 import { buildCharacterMesh } from './characters.js';

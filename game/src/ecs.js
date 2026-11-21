@@ -4,6 +4,7 @@
 // are functions over component queries. First landing: the particle system
 // (tyre smoke, muzzle sparks, rain splashes) on one pooled THREE.Points,
 // so a hundred puffs cost one draw call and zero allocation per frame.
+// Round 4: one pooled THREE.Points carries every puff, spark and splash.
 
 import * as THREE from 'three';
 

@@ -63,6 +63,11 @@ nearby. Everything after that is up to you.
   minutes. Dawn amber, noon white, dusk orange, night blue with the
   street lamps on. Rain rolls in on its own, storms flash lightning,
   and pedestrians hurry when it pours.
+- **Night that looks like night (Round 4)** — windows glow warm after
+  dark, lamp heads and headlights switch on, the road catches a faint
+  blue sheen, and the city's static props (roofs, AC units, palms,
+  lamps, dashes) are instanced per tile with frustum culling, cutting
+  daytime draw calls from ~333 to ~127.
 - **Synthwave BGM** — press M for Palmetto Nights FM: a 100 BPM
   A-minor loop of saw bass, square arp, pads and kick, synthesized
   live with WebAudio. It darkens at night and tightens in a chase.

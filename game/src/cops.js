@@ -5,6 +5,7 @@
 // round: alertTo() — a big drift or a horn blast in front of a cop sends the
 // nearest unit to investigate — and a searchlight cone under the helicopter
 // that only switches on after dark.
+// Round 4: the helicopter's searchlight cone only switches on after dark.
 
 import * as THREE from 'three';
 import { PALETTE, WANTED_RULES, clamp } from './config.js';

@@ -1,6 +1,7 @@
 // Palmetto Heat — wanted level, 0 to 5 stars.
 // Crimes add heat; quiet time decays it. Listeners (HUD, cops) subscribe to
 // level changes. The rules live in config.js; this module only keeps score.
+// Round 4: reckless driving (a drift or a horn blast in a cop's face) adds its own star.
 // New in this round: reckless driving counts too — drifting past a cop car
 // or leaning on the horn in their face adds a star of its own.
 

@@ -3,6 +3,7 @@
 // sixteenths, a slow pad under Am–F–C–G, and a sine kick on the beat. A
 // lookahead scheduler (25 ms tick, 0.12 s ahead) keeps it tight. M toggles
 // it; the mix darkens at night and tightens in a chase.
+// Round 4: the mood filter darkens at night (900 Hz) and opens up in a chase (2600 Hz).
 
 import { ensureAudioContext } from './audio.js';
 

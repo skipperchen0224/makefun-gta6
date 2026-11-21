@@ -3,6 +3,7 @@
 // is the wheelwoman: quicker on foot, sharper handling, lighter armour.
 // Jason is the heavy: more health, more armour, slower on foot. Press Q to
 // swap leads mid-run; the save remembers who you were last playing as.
+// Round 4: swapping leads is a mesh swap only — the physics never changes.
 
 import * as THREE from 'three';
 

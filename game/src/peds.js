@@ -3,6 +3,7 @@
 // the player's car, scatter at gunfire, and remember nothing between frames
 // except their own heading and speed. In the rain they hurry: walk speed
 // rises and they flee farther from gunfire and horns.
+// Round 4: rain makes walkers hurry and flee farther — the same scare, wetter streets.
 
 import * as THREE from 'three';
 import { WORLD, mulberry32 } from './config.js';
