@@ -356,6 +356,10 @@ function stageShot() {
     startGame();
     setHour(22.5);
     setWeatherKind('storm');
+    // Seed the clock and weather chips now: at software-render frame rates
+    // the 0.5s HUD refresh can lag several seconds behind the staged hour.
+    setClock(getClockLabel());
+    setWeather(getWeatherLabel());
     state.lastWeather = 'storm';
     rainStart();
     setRain(true);
