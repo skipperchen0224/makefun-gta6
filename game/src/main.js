@@ -115,7 +115,7 @@ function startGame() {
   game.state = 'playing';
   showTitle(false);
   hideEnd();
-  showMessage('Welcome to Palmetto City. Press E to start a mission, F to enter a car.');
+  if (!SHOT) showMessage('Welcome to Palmetto City. Press E to start a mission, F to enter a car.');
 }
 
 function enterCar(car) {
