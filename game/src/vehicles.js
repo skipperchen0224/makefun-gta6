@@ -13,6 +13,13 @@ import { resolveCircleCollision, randomRoadPoint } from './city.js';
 let sceneRef = null;
 let rng = mulberry32(1);
 export const traffic = [];
+const headMat = new THREE.MeshLambertMaterial({ color: 0xfff6c9, emissive: 0xfff6c9, emissiveIntensity: 0 });
+const tailMat = new THREE.MeshLambertMaterial({ color: 0x9b2020, emissive: 0xff2222, emissiveIntensity: 0 });
+
+export function setNightMode(on) {
+  headMat.emissiveIntensity = on ? 1 : 0;
+  tailMat.emissiveIntensity = on ? 1 : 0;
+}
 
 function buildCarMesh(color, isCop = false) {
   const g = new THREE.Group();
@@ -34,11 +41,13 @@ function buildCarMesh(color, isCop = false) {
     g.add(w);
     wheels.push(w);
   }
-  const headMat = new THREE.MeshBasicMaterial({ color: 0xfff6c9 });
   for (const x of [-0.6, 0.6]) {
     const h = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), headMat);
     h.position.set(x, 0.66, 2.22);
     g.add(h);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 0.08), tailMat);
+    tail.position.set(x, 0.66, -2.22);
+    g.add(tail);
   }
   if (isCop) {
     const bar = new THREE.Mesh(
