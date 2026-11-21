@@ -384,7 +384,7 @@ function stageShot(mode) {
 
 function boot() {
   renderer = new THREE.WebGLRenderer({ antialias: true });
-  if (shotMode) window.__renderer = renderer;
+  window.__renderer = renderer;
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
