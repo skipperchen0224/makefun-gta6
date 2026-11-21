@@ -15,12 +15,57 @@ const roadLines = [];
 let cityGroup = null;
 // Shared lamp-head material: one colour swap lights the whole city.
 let lampMat = null;
+let roadMat = null;
+const buildingMats = [];
+let props = null;
+const PROP_TILE_SIZE = WORLD.block * 3;
+const propTiles = [];
+const propFrustum = new THREE.Frustum();
+const viewProjection = new THREE.Matrix4();
+
+export function updateCityVisibility(camera) {
+  camera.updateMatrixWorld();
+  viewProjection.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  propFrustum.setFromProjectionMatrix(viewProjection);
+  for (const tile of propTiles) {
+    const { mesh, matrices, bounds } = tile;
+    if (!propFrustum.intersectsSphere(mesh.boundingSphere)) continue;
+    const visible = [];
+    for (let i = 0; i < matrices.length; i++) {
+      if (propFrustum.intersectsSphere(bounds[i])) visible.push(i);
+    }
+    if (visible.length !== tile.visible.length || visible.some((index, i) => index !== tile.visible[i])) {
+      visible.forEach((index, i) => mesh.setMatrixAt(i, matrices[index]));
+      mesh.count = visible.length;
+      mesh.instanceMatrix.needsUpdate = true;
+      tile.visible = visible;
+    }
+  }
+}
+
+function addProp(kind, x, y, z, sx = 1, sy = 1, sz = 1, rx = 0, rz = 0) {
+  const transform = new THREE.Object3D();
+  transform.position.set(x, y, z);
+  transform.scale.set(sx, sy, sz);
+  transform.rotation.set(rx, 0, rz);
+  transform.updateMatrix();
+  const tiles = props[kind].tiles;
+  const key = `${Math.floor(x / PROP_TILE_SIZE)},${Math.floor(z / PROP_TILE_SIZE)}`;
+  if (!tiles.has(key)) tiles.set(key, []);
+  tiles.get(key).push(transform.matrix);
+}
 
 function makeWindowTexture(rng, baseColor) {
   const c = document.createElement('canvas');
   c.width = 64;
   c.height = 128;
   const g = c.getContext('2d');
+  const e = document.createElement('canvas');
+  e.width = 64;
+  e.height = 128;
+  const eg = e.getContext('2d');
+  eg.fillStyle = '#000000';
+  eg.fillRect(0, 0, 64, 128);
   g.fillStyle = baseColor;
   g.fillRect(0, 0, 64, 128);
   const cols = 4;
@@ -30,11 +75,17 @@ function makeWindowTexture(rng, baseColor) {
       const lit = rng() < 0.35;
       g.fillStyle = lit ? '#ffe9a8' : '#2c3e50';
       g.fillRect(4 + x * 15, 6 + y * 15, 10, 9);
+      if (lit) {
+        eg.fillStyle = '#ffe9a8';
+        eg.fillRect(4 + x * 15, 6 + y * 15, 10, 9);
+      }
     }
   }
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
+  const emissiveMap = new THREE.CanvasTexture(e);
+  emissiveMap.colorSpace = THREE.SRGBColorSpace;
+  return { map: tex, emissiveMap };
 }
 
 function hexCss(hex) {
@@ -44,62 +95,48 @@ function hexCss(hex) {
 function addBuilding(scene, rng, cx, cz, w, d) {
   const h = 8 + rng() * 30;
   const color = PALETTE.building[Math.floor(rng() * PALETTE.building.length)];
-  const mat = new THREE.MeshLambertMaterial({ map: makeWindowTexture(rng, hexCss(color)) });
+  const { map, emissiveMap } = makeWindowTexture(rng, hexCss(color));
+  const mat = new THREE.MeshLambertMaterial({
+    map, emissive: 0xffffff, emissiveIntensity: 0,
+  });
+  mat.userData.windowGlow = emissiveMap;
+  buildingMats.push(mat);
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   mesh.position.set(cx, h / 2, cz);
   scene.add(mesh);
   // Flat roof cap so the top reads as a roof, not stretched windows.
-  const roof = new THREE.Mesh(
-    new THREE.BoxGeometry(w + 0.4, 0.6, d + 0.4),
-    new THREE.MeshLambertMaterial({ color: 0x6b5d4f }),
-  );
-  roof.position.set(cx, h + 0.3, cz);
-  scene.add(roof);
+  addProp('roof', cx, h + 0.3, cz, w + 0.4, 0.6, d + 0.4);
   colliders.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
   // Rooftop AC box on tall towers, for skyline variety.
   if (h > 24) {
-    const ac = new THREE.Mesh(
-      new THREE.BoxGeometry(3, 1.6, 3),
-      new THREE.MeshLambertMaterial({ color: 0x8a8f96 }),
-    );
-    ac.position.set(cx + w * 0.2, h + 1.4, cz - d * 0.15);
-    scene.add(ac);
+    addProp('ac', cx + w * 0.2, h + 1.4, cz - d * 0.15);
   }
 }
 
 function addPalm(scene, rng, x, z) {
-  const trunk = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.22, 0.34, 5.2, 6),
-    new THREE.MeshLambertMaterial({ color: PALETTE.palmTrunk }),
-  );
-  trunk.position.set(x, 2.6, z);
-  trunk.rotation.z = (rng() - 0.5) * 0.16;
-  scene.add(trunk);
-  const leaves = new THREE.Mesh(
-    new THREE.ConeGeometry(2.4, 2.2, 7),
-    new THREE.MeshLambertMaterial({ color: PALETTE.palmLeaf }),
-  );
-  leaves.position.set(x, 5.8, z);
-  scene.add(leaves);
+  addProp('trunk', x, 2.6, z, 1, 1, 1, 0, (rng() - 0.5) * 0.16);
+  addProp('leaves', x, 5.8, z);
 }
 
 // One street lamp: a dark pole and a lamp head that shares lampMat, so the
 // whole city lights up with a single colour swap at night.
 function addLamp(scene, x, z) {
-  const pole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.09, 0.12, 6.4, 6),
-    new THREE.MeshLambertMaterial({ color: 0x2c3240 }),
-  );
-  pole.position.set(x, 3.2, z);
-  scene.add(pole);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 6), lampMat);
-  head.position.set(x, 6.5, z);
-  scene.add(head);
+  addProp('pole', x, 3.2, z);
+  addProp('head', x, 6.5, z);
 }
 
 // Night mode: lamp heads go from dull grey to warm yellow.
 export function setNightMode(on) {
   if (lampMat) lampMat.color.setHex(on ? 0xffe9a8 : 0x4a5058);
+  if (roadMat) roadMat.emissiveIntensity = on ? 0.3 : 0;
+  for (const mat of buildingMats) {
+    const map = on ? mat.userData.windowGlow : null;
+    if (mat.emissiveMap !== map) {
+      mat.emissiveMap = map;
+      mat.needsUpdate = true;
+    }
+    mat.emissiveIntensity = on ? 1 : 0;
+  }
 }
 
 export function buildCity(scene, seed = 1) {
@@ -109,6 +146,20 @@ export function buildCity(scene, seed = 1) {
   const half = WORLD.size / 2;
   const step = WORLD.block;
   lampMat = new THREE.MeshBasicMaterial({ color: 0x4a5058 });
+  buildingMats.length = 0;
+  propTiles.length = 0;
+  const prop = (geometry, color) => ({
+    geometry, material: new THREE.MeshLambertMaterial({ color }), tiles: new Map(),
+  });
+  props = {
+    roof: prop(new THREE.BoxGeometry(1, 1, 1), 0x6b5d4f),
+    ac: prop(new THREE.BoxGeometry(3, 1.6, 3), 0x8a8f96),
+    trunk: prop(new THREE.CylinderGeometry(0.22, 0.34, 5.2, 6, 1, true), PALETTE.palmTrunk),
+    leaves: prop(new THREE.ConeGeometry(2.4, 2.2, 7), PALETTE.palmLeaf),
+    pole: prop(new THREE.CylinderGeometry(0.09, 0.12, 6.4, 6, 1, true), 0x2c3240),
+    head: { geometry: new THREE.SphereGeometry(0.32, 8, 6), material: lampMat, tiles: new Map() },
+    dash: { geometry: new THREE.PlaneGeometry(1, 1), material: new THREE.MeshBasicMaterial({ color: PALETTE.roadLine }), tiles: new Map() },
+  };
 
   // Ground: warm grass with a sand-coloured beach strip on the east edge.
   const ground = new THREE.Mesh(
@@ -134,8 +185,7 @@ export function buildCity(scene, seed = 1) {
   cityGroup.add(sea);
 
   // Roads: dark strips on every grid line, plus a dashed centre line.
-  const roadMat = new THREE.MeshLambertMaterial({ color: PALETTE.road });
-  const lineMat = new THREE.MeshBasicMaterial({ color: PALETTE.roadLine });
+  roadMat = new THREE.MeshLambertMaterial({ color: PALETTE.road, emissive: 0x182d48, emissiveIntensity: 0 });
   const walkMat = new THREE.MeshLambertMaterial({ color: PALETTE.sidewalk });
   for (let c = -half; c <= half; c += step) {
     for (const [w, h, x, z, axis] of [
@@ -159,10 +209,7 @@ export function buildCity(scene, seed = 1) {
   // Dashed centre lines along the two central avenues.
   for (let t = -half; t < half; t += 12) {
     for (const [x, z, w, h] of [[t, 0, 5, 0.5], [0, t, 0.5, 5]]) {
-      const dash = new THREE.Mesh(new THREE.PlaneGeometry(w, h), lineMat);
-      dash.rotation.x = -Math.PI / 2;
-      dash.position.set(x, 0.04, z);
-      cityGroup.add(dash);
+      addProp('dash', x, 0.04, z, w, h, 1, -Math.PI / 2);
     }
   }
 
@@ -197,6 +244,23 @@ export function buildCity(scene, seed = 1) {
     addLamp(scene, t, -7.5);
     addLamp(scene, t + 20, 7.5);
   }
+
+  for (const [kind, { geometry, material, tiles }] of Object.entries(props)) {
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+    for (const matrices of tiles.values()) {
+      const mesh = new THREE.InstancedMesh(geometry, material, matrices.length);
+      matrices.forEach((matrix, i) => mesh.setMatrixAt(i, matrix));
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingSphere();
+      const bounds = matrices.map((matrix) => kind === 'roof' || kind === 'dash'
+        ? geometry.boundingBox.clone().applyMatrix4(matrix).getBoundingSphere(new THREE.Sphere())
+        : geometry.boundingSphere.clone().applyMatrix4(matrix));
+      propTiles.push({ mesh, matrices, bounds, visible: matrices.map((_, i) => i) });
+      cityGroup.add(mesh);
+    }
+  }
+  props = null;
 
   // Diner, pier and safehouse landmarks: simple coloured boxes with a sign slab.
   const landmark = (place, color, h) => {

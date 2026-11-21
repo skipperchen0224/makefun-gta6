@@ -11,8 +11,8 @@ import { WORLD, PLAYER, CAR, PLACES, KEYS, DRIFT, ARMOR, WEATHER, clamp, lerp, m
 import { initInput, driveAxes, walkAxes, justPressed, mouseClicked, takeLook, takeZoom, resetFrame, lockPointer } from './input.js';
 import { initAudio, resumeAudio, playGunshot, playPickup, playMissionDone, playFail, playCrash, playBusted, engineStart, engineSet, sirenStart, sirenStop, playHorn, playSwap, playSkid, rainStart, rainStop } from './audio.js';
 import { hasSave, loadSave, writeSave } from './save.js';
-import { buildCity, resolveCircleCollision, randomRoadPoint, placeOf, setNightMode as setCityNight } from './city.js';
-import { initVehicles, spawnPlayerCar, spawnTraffic, driveCar, updateTraffic, nearestCar, traffic, explodeCar, createCar } from './vehicles.js';
+import { buildCity, resolveCircleCollision, randomRoadPoint, placeOf, setNightMode as setCityNight, updateCityVisibility } from './city.js';
+import { initVehicles, spawnPlayerCar, spawnTraffic, driveCar, updateTraffic, nearestCar, traffic, explodeCar, createCar, setNightMode as setCarNight } from './vehicles.js';
 import { initPeds, spawnPeds, spawnHostileSquad, scarePeds, updatePeds, hitPed, getPeds, countHostilesUp, setRain } from './peds.js';
 import { initWanted, getStars, addCrime, forceStars, updateWanted, onWantedChange, clearWanted } from './wanted.js';
 import { initCops, updateCops, damageCop, getCops, clearCops, alertTo, setNightMode as setCopNight } from './cops.js';
@@ -115,7 +115,7 @@ function startGame() {
   game.state = 'playing';
   showTitle(false);
   hideEnd();
-  showMessage('Welcome to Palmetto City. Press E to start a mission, F to enter a car.');
+  if (!SHOT) showMessage('Welcome to Palmetto City. Press E to start a mission, F to enter a car.');
 }
 
 function enterCar(car) {
@@ -318,9 +318,9 @@ function stageShot() {
     startGame();
     // Player already in the orange car, mid-chase on the avenue.
     const car = game.playerCar;
-    car.x = 0; car.z = 40;
+    car.x = 0; car.z = -40;
     car.heading = Math.PI;
-    car.speed = 24;
+    car.speed = 22;
     enterCar(car);
     forceStars(2);
     startMission(1, {
@@ -346,9 +346,9 @@ function stageShot() {
     game.lastWeatherState = 'storm';
     setRain(true);
     const car = game.playerCar;
-    car.x = 0; car.z = 40;
+    car.x = 0; car.z = -40;
     car.heading = Math.PI;
-    car.speed = 24;
+    car.speed = 22;
     enterCar(car);
     forceStars(3);
     startMission(6, {
@@ -366,6 +366,7 @@ function stageShot() {
 // ---- boot --------------------------------------------------------------------
 function boot() {
   renderer = new THREE.WebGLRenderer({ antialias: true });
+  if (SHOT) window.__renderer = renderer;
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -384,7 +385,8 @@ function boot() {
   sun = new THREE.DirectionalLight(0xfff2d9, 2.6);
   sun.position.set(120, 180, 60);
   scene.add(sun);
-  scene.add(new THREE.AmbientLight(0xbfd9e8, 0.9));
+  const ambient = new THREE.AmbientLight(0xbfd9e8, 0.9);
+  scene.add(ambient);
   hemi = new THREE.HemisphereLight(0x9fd4ff, 0x8a7a5a, 0.5);
   scene.add(hemi);
 
@@ -403,7 +405,11 @@ function boot() {
   initWeather(scene, sun, hemi, WEATHER.startHour);
   // Night boundary: lamps on, helicopter searchlight on, BGM darkens.
   onNight((night) => {
+    ambient.intensity = night ? 0.5 : 0.9;
+    ambient.color.setHex(night ? 0xbfd9ff : 0xbfd9e8);
+    scene.fog.color.setHex(night ? 0x182333 : 0xa8d4e6);
     setCityNight(night);
+    setCarNight(night);
     setCopNight(night);
     setBgmMood(night ? 'night' : 'day');
   });
@@ -557,6 +563,8 @@ function tick() {
   if (game.state === 'playing') {
     if (game.inCar && game.car) {
       const axes = driveAxes();
+      // Keep staged driving shots deterministic instead of coasting.
+      if (SHOT === 'play' || SHOT === 'night') game.car.speed = 22;
       const moved = driveCar(game.car, dt, axes.throttle, axes.steer, axes.brake);
       game.speed = game.car.speed;
       player.x = game.car.x;
@@ -775,6 +783,7 @@ function tick() {
     writeSave(game);
   }
 
+  updateCityVisibility(camera);
   renderer.render(scene, camera);
   resetFrame();
 }
