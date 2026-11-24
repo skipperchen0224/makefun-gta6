@@ -1,10 +1,5 @@
-// Persists cash, completed missions, best wanted, drift record and lead choice in localStorage.
-// Round 4 re-record: the save is one versioned localStorage key — version 1, cash, missions, lead, armour, drift.
-// Palmetto Heat — save / load through localStorage.
+// Persists cash, missions, best wanted, drift record, lead, armour and ammo in localStorage.
 // One versioned key; a corrupt or foreign payload is ignored, never fatal.
-// Round 4: the versioned key means a corrupt payload is ignored, never fatal.
-// The payload now also remembers which lead you play (Lucia or Jason),
-// your armour, and your best banked drift, on top of cash and missions.
 
 const KEY = 'palmetto-heat-save-v1';
 
@@ -30,6 +25,7 @@ export function loadSave() {
       character: data.character === 'jason' ? 'jason' : 'lucia',
       armor: Number(data.armor) || 0,
       bestDrift: Number(data.bestDrift) || 0,
+      ammo: data.ammo && typeof data.ammo === 'object' ? data.ammo : null,
     };
   } catch {
     return null;
@@ -47,6 +43,7 @@ export function writeSave(state) {
       character: state.character || 'lucia',
       armor: Math.floor(state.armor || 0),
       bestDrift: Math.floor(state.bestDrift || 0),
+      ammo: state.ammo || null,
       savedAt: new Date().toISOString(),
     }));
     return true;

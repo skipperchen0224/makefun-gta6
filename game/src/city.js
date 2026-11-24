@@ -8,6 +8,8 @@ const roadLines = [];
 let cityGroup = null;
 let lampHeadMat = null;
 let roadMat = null;
+let lampGlow = null;
+const lampSpots = [];
 const buildingMats = [];
 let props = {};
 const TILE = WORLD.block * 3;
@@ -67,6 +69,8 @@ function addBuilding(container, rng, cx, cz, w, d) {
   buildingMats.push(mat);
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
   mesh.position.set(cx, h / 2, cz);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
   container.add(mesh);
   // Roof cap goes through the instanced prop system.
   addProp('roof', cx, h + 0.3, cz, w + 0.4, 0.6, d + 0.4);
@@ -86,6 +90,32 @@ function addLamp(container, x, z) {
   void container;
   addProp('pole', x, 3.2, z);
   addProp('head', x, 6.5, z);
+  lampSpots.push(x, 6.5, z);
+}
+
+// Round 5: a soft round sprite, drawn additively, fakes bloom around lamps and car lights.
+let glowTex = null;
+export function glowTexture() {
+  if (glowTex) return glowTex;
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.25, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  glowTex = new THREE.CanvasTexture(c);
+  return glowTex;
+}
+
+export function glowMaterial(size, color, vertexColors = false) {
+  return new THREE.PointsMaterial({
+    size, color, map: glowTexture(), vertexColors, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true,
+  });
 }
 
 // City-side night switch: lamp heads glow warm, roads pick up a faint blue
@@ -93,6 +123,7 @@ function addLamp(container, x, z) {
 export function setNightMode(on) {
   if (lampHeadMat) lampHeadMat.color.setHex(on ? 0xffd27a : 0x3a3f46);
   if (roadMat) roadMat.emissiveIntensity = on ? 0.3 : 0;
+  if (lampGlow) lampGlow.visible = on;
   for (const mat of buildingMats) {
     const glow = mat.userData.windowGlow;
     const next = on ? glow : null;
@@ -119,6 +150,7 @@ export function buildCity(scene, seed = 1) {
   colliders.length = 0;
   roadLines.length = 0;
   propTiles.length = 0;
+  lampSpots.length = 0;
   props = {
     roof: makeProp(
       new THREE.BoxGeometry(1, 1, 1),
@@ -154,6 +186,7 @@ export function buildCity(scene, seed = 1) {
   );
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = -0.05;
+  ground.receiveShadow = true;
   cityGroup.add(ground);
   const beach = new THREE.Mesh(
     new THREE.PlaneGeometry(60, WORLD.size + 160),
@@ -179,21 +212,25 @@ export function buildCity(scene, seed = 1) {
     const roadH = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.size, WORLD.roadWidth), roadMat);
     roadH.rotation.x = -Math.PI / 2;
     roadH.position.set(0, 0.02, p);
+    roadH.receiveShadow = true;
     cityGroup.add(roadH);
     roadLines.push({ axis: 'x', pos: p });
     const roadV = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.roadWidth, WORLD.size), roadMat);
     roadV.rotation.x = -Math.PI / 2;
     roadV.position.set(p, 0.02, 0);
+    roadV.receiveShadow = true;
     cityGroup.add(roadV);
     roadLines.push({ axis: 'z', pos: p });
     for (const side of [-1, 1]) {
       const walkH = new THREE.Mesh(new THREE.PlaneGeometry(WORLD.size, 4), sidewalkMat);
       walkH.rotation.x = -Math.PI / 2;
       walkH.position.set(0, 0.01, p + side * (WORLD.roadWidth / 2 + 2));
+      walkH.receiveShadow = true;
       cityGroup.add(walkH);
       const walkV = new THREE.Mesh(new THREE.PlaneGeometry(4, WORLD.size), sidewalkMat);
       walkV.rotation.x = -Math.PI / 2;
       walkV.position.set(p + side * (WORLD.roadWidth / 2 + 2), 0.01, 0);
+      walkV.receiveShadow = true;
       cityGroup.add(walkV);
     }
   }
@@ -249,6 +286,8 @@ export function buildCity(scene, seed = 1) {
       new THREE.MeshLambertMaterial({ color: def.color }),
     );
     block.position.set(pos.x, def.h / 2, pos.z);
+    block.castShadow = true;
+    block.receiveShadow = true;
     cityGroup.add(block);
     const sign = new THREE.Mesh(
       new THREE.BoxGeometry(10, 2.2, 0.6),
@@ -268,6 +307,8 @@ export function buildCity(scene, seed = 1) {
       matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
       mesh.instanceMatrix.needsUpdate = true;
       mesh.computeBoundingSphere();
+      mesh.castShadow = kind !== 'dash';
+      mesh.receiveShadow = kind === 'roof';
       const spheres = matrices.map((m) => {
         if (kind === 'roof' || kind === 'dash') {
           const box = entry.geometry.boundingBox.clone().applyMatrix4(m);
@@ -287,6 +328,13 @@ export function buildCity(scene, seed = 1) {
     }
   }
   props = {};
+
+  // Night halos over every lamp head: one Points cloud, one draw call.
+  const haloGeo = new THREE.BufferGeometry();
+  haloGeo.setAttribute('position', new THREE.Float32BufferAttribute(lampSpots, 3));
+  lampGlow = new THREE.Points(haloGeo, glowMaterial(7, 0xffc870));
+  lampGlow.visible = false;
+  cityGroup.add(lampGlow);
   return cityGroup;
 }
 
@@ -341,6 +389,57 @@ export function resolveCircleCollision(x, z, r) {
   nx = clamp(nx, -half, half);
   nz = clamp(nz, -half, half);
   return { x: nx, z: nz };
+}
+
+// Round 5: is the straight line from A to B blocked by a building? Sampled every 4 m.
+export function segmentBlocked(ax, az, bx, bz) {
+  const len = Math.hypot(bx - ax, bz - az);
+  const n = Math.ceil(len / 4);
+  for (let i = 1; i < n; i++) {
+    const t = i / n;
+    // Samples within 2 m of either end are skipped, so someone hugging a wall can see past it.
+    if (t * len < 2 || (1 - t) * len < 2) continue;
+    const x = ax + (bx - ax) * t;
+    const z = az + (bz - az) * t;
+    for (const b of colliders) {
+      if (inBox(b, x, z) && !inBox(b, ax, az) && !inBox(b, bx, bz)) return true;
+    }
+  }
+  return false;
+}
+
+// Someone standing inside a box (a plaza or landmark footprint) can still see out of it.
+function inBox(b, x, z) {
+  return x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ;
+}
+
+// Round 5 road-grid navigation: the next point on the street grid that brings a
+// driver at (fx, fz) closer to (tx, tz). On a road it heads for the next
+// intersection toward the target; at an intersection it picks the neighbour
+// along the bigger gap; off the road it snaps back onto the nearest one.
+export function roadWaypoint(fx, fz, tx, tz) {
+  const B = WORLD.block;
+  const half = WORLD.size / 2;
+  const ix = Math.round(fx / B) * B;
+  const iz = Math.round(fz / B) * B;
+  const onZ = Math.abs(fx - ix) < 6; // on a north-south road (x = ix)
+  const onX = Math.abs(fz - iz) < 6; // on an east-west road (z = iz)
+  if (!onX && !onZ) {
+    const s = snapToRoad(fx, fz);
+    return { x: s.x, z: s.z };
+  }
+  const dx = tx - fx;
+  const dz = tz - fz;
+  if (onX && onZ && Math.hypot(fx - ix, fz - iz) < 6) {
+    if (Math.abs(dx) > Math.abs(dz)) return { x: clamp(ix + Math.sign(dx) * B, -half, half), z: iz };
+    return { x: ix, z: clamp(iz + Math.sign(dz) * B, -half, half) };
+  }
+  if (onX) {
+    const nx = dx > 0 ? Math.ceil(fx / B) * B : Math.floor(fx / B) * B;
+    return { x: nx === fx ? nx + Math.sign(dx || 1) * B : nx, z: iz };
+  }
+  const nz = dz > 0 ? Math.ceil(fz / B) * B : Math.floor(fz / B) * B;
+  return { x: ix, z: nz === fz ? nz + Math.sign(dz || 1) * B : nz };
 }
 
 export function getLandmark(name) {

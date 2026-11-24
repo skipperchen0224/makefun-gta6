@@ -1,12 +1,6 @@
 // The particle pool: smoke puffs and impact sparks, spawned and recycled every frame.
-// Round 4 re-record: smoke, sparks and splashes are the only particle effects, all stepped by runParticleSystem.
-// Palmetto Heat — a tiny entity-component-system.
-// The older modules each own their objects; new effects go through this
-// instead: an entity is an id, components are plain data in maps, systems
-// are functions over component queries. First landing: the particle system
-// (tyre smoke, muzzle sparks, rain splashes) on one pooled THREE.Points,
-// so a hundred puffs cost one draw call and zero allocation per frame.
-// Round 4: one pooled THREE.Points carries every puff, spark and splash.
+// A tiny entity-component-system: entities are ids, components plain data, systems functions.
+// One pooled THREE.Points carries every puff, spark and splash: one draw call, no allocation.
 
 import * as THREE from 'three';
 

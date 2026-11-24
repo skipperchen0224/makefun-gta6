@@ -1,6 +1,6 @@
 // 车辆的建造、驾驶、偷车、撞车；街机物理是有意的——油门、按速度缩放的转向、手刹漂移、经由 city.js 的建筑碰撞、交通车沿道路线走、绝不穿楼。
 import * as THREE from 'three';
-import { CAR, DRIFT, PALETTE, clamp, mulberry32 } from './config.js';
+import { CAR, DRIFT, PALETTE, TRAFFIC, WORLD, clamp, mulberry32 } from './config.js';
 import { resolveCircleCollision, randomRoadPoint, snapToRoad } from './city.js';
 
 let sceneRef = null;
@@ -76,6 +76,7 @@ export function createCar(color, x, z, heading = 0, isCop = false) {
   const mesh = buildCarMesh(color, isCop);
   mesh.position.set(x, 0, z);
   mesh.rotation.y = heading;
+  mesh.traverse((o) => { o.castShadow = true; });
   sceneRef.add(mesh);
   return {
     mesh,
@@ -119,8 +120,39 @@ export function spawnTraffic(count = 10) {
     car.cruise = 9 + rng() * 6;
     car.axis = p.axis;
     car.dir = heading === Math.PI / 2 || heading === 0 ? 1 : -1;
+    car.line = p.axis === 'x' ? p.z : p.x;
+    placeInLane(car);
     traffic.push(car);
   }
+}
+
+// Round 5 lanes: traffic keeps right, TRAFFIC.lane metres off the centre line.
+// Road along x (axis 'x', z = line) or along z (axis 'z', x = line); dir is +1/-1.
+function laneHeading(axis, dir) {
+  if (axis === 'x') return dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+  return dir > 0 ? 0 : Math.PI;
+}
+
+function placeInLane(car) {
+  const off = TRAFFIC.lane * car.dir;
+  if (car.axis === 'x') car.z = car.line + off;
+  else car.x = car.line - off;
+  car.heading = laneHeading(car.axis, car.dir);
+  syncMesh(car);
+}
+
+function respawnNear(car, px, pz) {
+  const a = rng() * Math.PI * 2;
+  const r = 90 + rng() * 60;
+  const half = WORLD.size / 2 - 20;
+  const p = snapToRoad(clamp(px + Math.cos(a) * r, -half, half), clamp(pz + Math.sin(a) * r, -half, half));
+  car.axis = p.axis;
+  car.line = p.axis === 'x' ? p.z : p.x;
+  car.x = p.x;
+  car.z = p.z;
+  car.dir = rng() < 0.5 ? 1 : -1;
+  car.speed = car.cruise;
+  placeInLane(car);
 }
 
 function syncMesh(car) {
@@ -185,28 +217,64 @@ export function driveCar(car, dt, throttle, steer, handbrake) {
   return Math.abs(car.speed) * dt;
 }
 
-export function updateTraffic(dt, playerX, playerZ) {
-  const half = 240;
+// Traffic follows its lane, turns at intersections, brakes for whatever is ahead
+// (the player, other cars, `obstacles` such as cops and roadblocks) and is recycled
+// near the player once it drifts TRAFFIC.recycle metres away. Parked and stolen
+// cars are skipped; the mission tail car drives the same lanes but is never recycled.
+export function updateTraffic(dt, playerX, playerZ, obstacles = []) {
+  const half = WORLD.size / 2 - 10;
+  const B = WORLD.block;
   for (const car of traffic) {
-    if (car.dead || car.isTail) continue;
-    car.speed = car.cruise;
-    car.x += Math.sin(car.heading) * car.speed * dt;
-    car.z += Math.cos(car.heading) * car.speed * dt;
-    if (Math.abs(car.x) > half - 8 || Math.abs(car.z) > half - 8) {
-      car.heading += Math.PI;
-      car.x = clamp(car.x, -(half - 10), half - 10);
-      car.z = clamp(car.z, -(half - 10), half - 10);
+    if (car.dead || car.isPlayer || car.parked) continue;
+    if (car.line === undefined) {
+      const p = snapToRoad(car.x, car.z);
+      car.axis = p.axis;
+      car.line = p.axis === 'x' ? p.z : p.x;
+      car.dir = 1;
+      placeInLane(car);
     }
-    if (Math.hypot(car.x - playerX, car.z - playerZ) > 200) {
-      const p = snapToRoad(
-        playerX + (rng() * 2 - 1) * 120,
-        playerZ + (rng() * 2 - 1) * 120,
-      );
-      car.x = p.x;
-      car.z = p.z;
-      car.heading = [0, Math.PI / 2, Math.PI, -Math.PI / 2][Math.floor(rng() * 4)];
+    if (!car.isTail && Math.hypot(car.x - playerX, car.z - playerZ) > TRAFFIC.recycle) {
+      respawnNear(car, playerX, playerZ);
+      continue;
     }
-    syncMesh(car);
+    const fx = Math.sin(car.heading);
+    const fz = Math.cos(car.heading);
+    let target = car.stunned > 0 ? 0 : car.cruise;
+    car.stunned = Math.max(0, (car.stunned || 0) - dt);
+    const check = (ox, oz) => {
+      const dx = ox - car.x;
+      const dz = oz - car.z;
+      const ahead = dx * fx + dz * fz;
+      if (ahead <= 0 || ahead > 14) return;
+      if (Math.abs(dx * fz - dz * fx) < 2.4) target = Math.min(target, Math.max(0, (ahead - 5.5) * 1.6));
+    };
+    check(playerX, playerZ);
+    for (const o of obstacles) check(o.x, o.z);
+    for (const o of traffic) if (o !== car && !o.dead) check(o.x, o.z);
+    car.speed += clamp(target - car.speed, -24 * dt, 7 * dt);
+
+    const prev = car.axis === 'x' ? car.x : car.z;
+    const next = prev + car.dir * car.speed * dt;
+    if (car.axis === 'x') car.x = next;
+    else car.z = next;
+    const k = Math.floor(next / B);
+    const crossed = Math.floor(prev / B) !== k ? (car.dir > 0 ? k * B : (k + 1) * B) : null;
+    if (Math.abs(next) > half) {
+      car.dir = -car.dir;
+      if (car.axis === 'x') car.x = clamp(car.x, -half, half);
+      else car.z = clamp(car.z, -half, half);
+      placeInLane(car);
+    } else if (crossed !== null && Math.abs(crossed) <= half - B && rng() < TRAFFIC.turnChance) {
+      const cross = car.line;
+      car.axis = car.axis === 'x' ? 'z' : 'x';
+      car.line = crossed;
+      car.dir = rng() < 0.5 ? 1 : -1;
+      if (car.axis === 'x') car.x = cross;
+      else car.z = cross;
+      placeInLane(car);
+    } else {
+      syncMesh(car);
+    }
   }
 }
 

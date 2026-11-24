@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <!-- Palmetto Heat page shell: canvas mount, HUD panels, title and end screens, and the three.js import map. -->
-<!-- Round 4 re-record: the import map pins three to the vendored build — the game never fetches a CDN. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Palmetto Heat — Open-World Crime Game</title>
+<link rel="icon" href="data:,">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { width: 100%; height: 100%; overflow: hidden; background: #0c1116;
@@ -22,6 +22,22 @@
   #hud-cash { font-size: 26px; font-weight: 800; color: #7ee787; letter-spacing: 0.5px; }
   #hud-stars { font-size: 24px; letter-spacing: 4px; color: #ffd34d; text-shadow: 0 0 8px rgba(0,0,0,0.7); }
   #hud-stars.hot { color: #ff5a4d; animation: pulse 0.7s infinite alternate; }
+  #hud-stars.evading { color: #9fb4d8; animation: pulse 0.35s infinite alternate; }
+  #hud-weapon { position: absolute; right: 22px; bottom: 214px; font-size: 16px; font-weight: 800;
+    letter-spacing: 1px; background: rgba(10,14,18,0.68); padding: 6px 12px; border-radius: 8px; color: #ffd34d; }
+  #hud-carhp { position: absolute; right: 22px; bottom: 246px; width: 140px; height: 8px; border-radius: 4px;
+    background: rgba(10,14,18,0.68); overflow: hidden; display: none; }
+  #hud-carhp.show { display: block; }
+  #carhp-fill { height: 100%; width: 100%; background: #ff9f43; }
+  #hud-story { position: absolute; left: 22px; bottom: 70px; max-width: 420px; background: rgba(10,14,18,0.82);
+    border-left: 4px solid #ff4fa3; padding: 10px 14px; border-radius: 8px; font-size: 15px; line-height: 1.4;
+    opacity: 0; transition: opacity 0.3s ease; }
+  #hud-story.show { opacity: 1; }
+  #hud-story b { color: #ff4fa3; display: block; font-size: 12px; letter-spacing: 2px; margin-bottom: 3px; }
+  #hud-paused { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    font-size: 48px; font-weight: 900; letter-spacing: 6px; background: rgba(8,10,16,0.55); }
+  #hud-paused.show { display: flex; }
+  #title-save { margin-top: 10px; font-size: 14px; color: #9fe6c4; letter-spacing: 1px; }
   @keyframes pulse { from { opacity: 1; } to { opacity: 0.55; } }
   .health-container { width: 210px; padding: 0; height: 22px; overflow: hidden; }
   #health-fill { height: 100%; width: 100%; background: #37c978; border-radius: 6px;
@@ -109,6 +125,10 @@
   <canvas id="minimap" width="168" height="168"></canvas>
   <div id="hud-speed">0 km/h</div>
   <div id="hud-drift">DRIFT +0</div>
+  <div id="hud-weapon">PISTOL 12/72</div>
+  <div id="hud-carhp"><div id="carhp-fill"></div></div>
+  <div id="hud-story"></div>
+  <div id="hud-paused">PAUSED<span style="font-size:16px;letter-spacing:2px;margin-left:18px">P to resume</span></div>
   <div id="hud-help">Click to start</div>
   <div id="hud-message"></div>
   <div id="hud-banner"></div>
@@ -121,9 +141,11 @@
      for Mama Rosa, and make the city yours — on foot or behind the wheel.</p>
   <div class="leads">TWO LEADS &middot; LUCIA THE WHEELWOMAN &amp; JASON THE HEAVY &middot; PRESS Q TO SWAP</div>
   <div class="cta">CLICK TO START</div>
+  <div id="title-save"></div>
   <div class="keys">WASD move / drive &nbsp;&middot;&nbsp; SPACE handbrake drift &nbsp;&middot;&nbsp; F enter car
     &nbsp;&middot;&nbsp; E start mission &nbsp;&middot;&nbsp; CLICK shoot &nbsp;&middot;&nbsp; SHIFT sprint<br>
-    Q swap lead &nbsp;&middot;&nbsp; M synthwave music &nbsp;&middot;&nbsp; H horn &nbsp;&middot;&nbsp; WHEEL zoom camera</div>
+    Q swap lead &nbsp;&middot;&nbsp; M synthwave music &nbsp;&middot;&nbsp; H horn &nbsp;&middot;&nbsp; WHEEL zoom camera<br>
+    1 / 2 / 3 pistol · SMG · shotgun &nbsp;&middot;&nbsp; R reload &nbsp;&middot;&nbsp; P pause &nbsp;&middot;&nbsp; N new game</div>
 </div>
 
 <div id="end-screen" class="hidden">

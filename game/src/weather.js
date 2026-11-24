@@ -1,11 +1,6 @@
 // An eight-minute day, rain and storm states, and the onNight hook the whole city listens to.
-// Round 4 re-record: rain is one pooled Points cloud that follows the camera and hides when the sky clears.
-// Palmetto Heat — weather and the day/night cycle.
-// A 24-hour game clock runs over eight real minutes. The sun swings on it:
-// dawn amber, noon white, dusk orange, night blue, with the city's lamps
-// coming on after dark. Weather rolls between clear, rain and storm; rain
-// is a Points cloud that follows the camera, and a storm flashes lightning.
-// Round 4: setHour moves the clock but never the night flag, so the next tick fires the change.
+// Dawn amber, noon white, dusk orange, night blue; fog follows the sky colour. Rain is a pool
+// of streaks that follows the camera, and a storm flashes lightning.
 
 import * as THREE from 'three';
 import { clamp } from './config.js';
@@ -43,19 +38,20 @@ export function initWeather(scene, sun, hemi, startHour = 10.5) {
   weather = 'clear';
   weatherTimer = 75 + Math.random() * 60;
   wasNight = isNight();
-  // Rain: one pooled Points cloud, hidden until it rains.
+  // Rain: one pooled LineSegments cloud of 0.9 m streaks, hidden until it rains.
   const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(RAIN_DROPS * 3);
+  const pos = new Float32Array(RAIN_DROPS * 6);
   rainSpeed = new Float32Array(RAIN_DROPS);
   for (let i = 0; i < RAIN_DROPS; i++) {
-    pos[i * 3] = (Math.random() - 0.5) * 70;
-    pos[i * 3 + 1] = Math.random() * 40;
-    pos[i * 3 + 2] = (Math.random() - 0.5) * 70;
+    const x = (Math.random() - 0.5) * 70;
+    const y = Math.random() * 40;
+    const z = (Math.random() - 0.5) * 70;
+    pos.set([x, y, z, x, y + 0.9, z], i * 6);
     rainSpeed[i] = 42 + Math.random() * 22;
   }
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  rainPoints = new THREE.Points(geo, new THREE.PointsMaterial({
-    color: 0xbfd9e8, size: 0.32, transparent: true, opacity: 0.55, sizeAttenuation: true,
+  rainPoints = new THREE.LineSegments(geo, new THREE.LineBasicMaterial({
+    color: 0xbfd9e8, transparent: true, opacity: 0.5,
   }));
   rainPoints.visible = false;
   rainPoints.frustumCulled = false;
@@ -121,6 +117,8 @@ export function updateWeather(dt, camPos) {
   if (weather !== 'clear') tmpColor.lerp(rainSky, weather === 'storm' ? 0.55 : 0.35);
   sceneRef.background.copy(tmpColor);
   if (sceneRef.fog) {
+    // Round 5: fog takes the sky colour every frame, so dusk and storms blend at the horizon.
+    sceneRef.fog.color.copy(tmpColor);
     sceneRef.fog.near = weather === 'storm' ? 90 : weather === 'rain' ? 130 : 180;
     sceneRef.fog.far = weather === 'storm' ? 300 : weather === 'rain' ? 400 : 520;
   }
@@ -135,13 +133,19 @@ export function updateWeather(dt, camPos) {
     const fall = weather === 'storm' ? 1.7 : 1;
     const wind = weather === 'storm' ? -6 : -1.5;
     for (let i = 0; i < RAIN_DROPS; i++) {
-      pos[i * 3 + 1] -= rainSpeed[i] * fall * dt;
-      pos[i * 3] += wind * dt;
-      if (pos[i * 3 + 1] < 0) {
-        pos[i * 3] = camPos.x + (Math.random() - 0.5) * 70;
-        pos[i * 3 + 1] = 32 + Math.random() * 8;
-        pos[i * 3 + 2] = camPos.z + (Math.random() - 0.5) * 70;
+      const o = i * 6;
+      const dy = rainSpeed[i] * fall * dt;
+      pos[o] += wind * dt;
+      pos[o + 1] -= dy;
+      if (pos[o + 1] < 0) {
+        pos[o] = camPos.x + (Math.random() - 0.5) * 70;
+        pos[o + 1] = 32 + Math.random() * 8;
+        pos[o + 2] = camPos.z + (Math.random() - 0.5) * 70;
       }
+      // The streak's top trails along the fall and the wind.
+      pos[o + 3] = pos[o] - wind * 0.03;
+      pos[o + 4] = pos[o + 1] + 0.9;
+      pos[o + 5] = pos[o + 2];
     }
     rainPoints.geometry.attributes.position.needsUpdate = true;
   }

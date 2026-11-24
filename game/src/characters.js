@@ -1,11 +1,5 @@
 // Lucia is quick with light armour, Jason is tough with heavy armour; Q swaps them mid-game.
-// Round 4 re-record: Lucia and Jason share one skeleton and scale, so a swap never moves the hitbox.
-// Palmetto Heat — dual protagonists: Lucia and Jason.
-// GTA 6's spirit is a two-lead story, so Palmetto Heat has one too. Lucia
-// is the wheelwoman: quicker on foot, sharper handling, lighter armour.
-// Jason is the heavy: more health, more armour, slower on foot. Press Q to
-// swap leads mid-run; the save remembers who you were last playing as.
-// Round 4: swapping leads is a mesh swap only — the physics never changes.
+// Swapping is a mesh swap only, and the save remembers who you were playing.
 
 import * as THREE from 'three';
 

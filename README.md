@@ -12,6 +12,7 @@ police on your tail. Palmetto City, Mama Rosa and the whole cast are
 original creations; nothing here is taken from Rockstar.
 
 Round 4 adds lit windows and street lamps after dark, and instanced city props that cut draw calls.
+Round 5 adds a three-gun arsenal, pickups, a rival crew that shoots back, line-of-sight police with roadblocks, lane-keeping traffic, story calls and sun shadows.
 
 **Play now:** https://skipperchen0224.github.io/makefun-gta6/game/index.html
 
@@ -70,6 +71,34 @@ nearby. Everything after that is up to you.
   blue sheen, and the city's static props (roofs, AC units, palms,
   lamps, dashes) are instanced per tile with frustum culling, cutting
   daytime draw calls from ~333 to ~127.
+- **Arsenal and pickups (Round 5)** — pistol (12-round mag, 34 dmg),
+  SMG (30 rounds, full auto, unlocks after job 3) and shotgun (6 shells,
+  6 pellets, unlocks after job 4) on 1/2/3, with magazines, reserves and
+  a 1.3 s reload on R. Sixteen health / armour / ammo / cash pickups sit
+  on street corners and respawn after 45 s; downed crew drop ammo or
+  cash, wrecked cruisers drop armour. Soft aim assist (12°) picks the
+  closest target in line of sight.
+- **Enemies that fight back (Round 5)** — the Street Sweep crew hold
+  their ground at 14 m and shoot every 1.1–1.9 s (55 % hit on foot,
+  30 % against a fast car). Run someone over and it counts.
+- **Smarter police (Round 5)** — cruisers drive the street grid when a
+  building is in the way, arrive on roads, and only shoot with line of
+  sight. Stars cool off only after 8 s out of sight of every unit (the
+  stars flash blue while you're evading). From 3 stars, roadblocks of
+  two cruisers appear across the intersection ahead every 22 s; at 4
+  stars two units move to intercept; stop next to a cop for 2 s and
+  you're BUSTED in the car.
+- **Living streets (Round 5)** — 18 cars keep right in lanes 2.6 m off
+  the centre line, turn at 35 % of intersections and brake for anything
+  ahead; 28 pedestrians stroll the sidewalks. Both are recycled near
+  you once they're 190 m away, so the blocks around you stay busy.
+- **Story (Round 5)** — Mama Rosa, Jason and Lucia call in after every
+  job, from the prologue to the finale.
+- **Light and weather polish (Round 5)** — real-time sun shadows
+  (2048² map, a 140 m box following you), additive glow on every
+  lamp, headlight, tail light and light bar at night, a helicopter
+  searchlight beam that tracks you, rain drawn as streaks, and fog
+  that takes the sky colour so dusk and storms blend at the horizon.
 - **Synthwave BGM** — press M for Palmetto Nights FM: a 100 BPM
   A-minor loop of saw bass, square arp, pads and kick, synthesized
   live with WebAudio. It darkens at night and tightens in a chase.
@@ -83,7 +112,8 @@ nearby. Everything after that is up to you.
   objective.
 - **Progress that sticks** — cash, completed missions, your highest
   wanted level, your lead, your armour and your best drift are saved
-  in localStorage, so closing the tab doesn't wipe your run.
+  in localStorage, so closing the tab doesn't wipe your run. Round 5
+  also saves your ammo, and the title screen shows the save it found.
 
 ## Controls
 
@@ -100,7 +130,10 @@ nearby. Everything after that is up to you.
 | H | Horn (in a car) |
 | T | Wave (multiplayer lobby) |
 | Wheel | Zoom the chase camera |
-| R | Restart after BUSTED / WASTED |
+| R | Reload (restart after BUSTED / WASTED) |
+| 1 / 2 / 3 | Pistol / SMG / shotgun |
+| P | Pause |
+| N | New game (title screen, wipes the save) |
 
 ## Under the hood
 
@@ -115,7 +148,7 @@ nearby. Everything after that is up to you.
   one pooled `THREE.Points`, one draw call, zero allocation per frame.
 - The code is organized by system: `city`, `vehicles`, `peds`,
   `cops`, `wanted`, `missions`, `hud`, `input`, `audio`, `save`,
-  `config`, `main` — plus `characters` (the two leads), `weather`
+  `config`, `main` — plus `weapons` and `pickups` (Round 5), `characters` (the two leads), `weather`
   (clock, rain, lightning), `ecs` (particles), `bgm` (music) and
   `multiplayer` (the lobby client). `serve.ts` serves the game and
   the lobby on one port with a hand-rolled WebSocket implementation
@@ -129,3 +162,5 @@ nearby. Everything after that is up to you.
 MIT — see [LICENSE](LICENSE).
 
 Round 4: windows, lamps and headlights glow at night, and the city's static props are instanced, cutting daytime draw calls from 333 to about 127.
+
+Round 5: weapons, pickups, crew that shoot back, line-of-sight police with roadblocks and intercepts, lane traffic, story calls, sun shadows and night glow.
