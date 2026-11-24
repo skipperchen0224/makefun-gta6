@@ -22,6 +22,8 @@ import { initMultiplayer, isMultiplayer, multiplayerCount, updateMultiplayer, se
 
 const params = new URLSearchParams(location.search);
 const shotMode = params.get('shot') || '';
+// Staged screenshot runs never touch the player's real save.
+function saveProgress() { if (!shotMode) writeSave(state); }
 let seed = Number.parseInt(params.get('seed') || '1', 10);
 if (!Number.isFinite(seed)) seed = 1;
 const rng = mulberry32(seed * 7919 + 13);
@@ -98,7 +100,7 @@ function swapCharacter(id) {
   playSwap();
   showBanner(`${def.name} — ${def.tag}`);
   showMessage(def.blurb);
-  writeSave(state);
+  saveProgress();
 }
 
 function respawn() {
@@ -433,7 +435,7 @@ function busted(reason) {
   showEnd('BUSTED', `${reason} The cops took you in — $150 bail.`);
   setCash(state.cash);
   setArmor(state.armor, characterDef(state.character).armorMax);
-  writeSave(state);
+  saveProgress();
 }
 
 function wasted() {
@@ -445,7 +447,7 @@ function wasted() {
   state.armor = 0;
   showEnd('WASTED', 'Palmetto City chewed you up. Press R to try again.');
   setArmor(state.armor, characterDef(state.character).armorMax);
-  writeSave(state);
+  saveProgress();
 }
 
 function restart() {
@@ -685,7 +687,7 @@ function boot() {
       setCash(state.cash);
       showBanner(`Mission complete +$${evt.reward}`);
       playMissionDone();
-      writeSave(state);
+      saveProgress();
       const line = STORY[evt.mission.id];
       if (line) setTimeout(() => showStory(...line), 1800);
     } else if (evt.type === 'fail') {
@@ -867,7 +869,7 @@ function animate() {
           showMessage('A cop watched that drift — reckless driving.');
         }
         car.lastBanked = 0;
-        writeSave(state);
+        saveProgress();
       }
     } else if (!state.inCar) {
       const def = characterDef(state.character);
@@ -1099,7 +1101,7 @@ function animate() {
     tracers.splice(i, 1);
   }
   if (state.status === 'playing' && Math.floor(state.playSeconds) % 20 === 0 && frameCount % 60 === 0) {
-    writeSave(state);
+    saveProgress();
   }
   updateCityVisibility(camera);
   renderer.render(scene, camera);
