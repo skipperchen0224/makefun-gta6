@@ -352,6 +352,7 @@ function collectPickup(kind) {
   setCash(state.cash);
   playPickup();
   showMessage(k.label);
+  saveProgress();
 }
 
 // Night glow over every head/tail lamp and cop light bar: one Points cloud.
