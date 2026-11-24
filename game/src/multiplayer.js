@@ -1,12 +1,6 @@
 // Optional lobby client: sends position snapshots, receives other drivers, chat and waves.
-// Round 4 re-record: snapshots go out ten times a second; ghosts are only drawn, never simulated.
-// Palmetto Heat — WebSocket multiplayer (optional, ?mp=1).
-// serve.ts runs a tiny lobby on the same port: no accounts, no deps, just
-// positions and chat. This client sends its own snapshot ten times a
-// second and draws the other drivers as ghost cars (or ghost leads on
-// foot) with their name floating over them. Offline play is untouched:
-// without ?mp=1 nothing ever connects.
-// Round 4: a ghost swaps its body mesh when its driver gets in or out of a car.
+// serve.ts runs the lobby on the same port; snapshots go out ten times a second and other
+// drivers are ghost cars or ghost leads. Without ?mp=1 nothing ever connects.
 
 import * as THREE from 'three';
 import { buildCharacterMesh } from './characters.js';

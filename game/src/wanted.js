@@ -1,13 +1,7 @@
-// Stars rise per crime, decay after fifteen quiet seconds, and drive how many cops spawn.
-// Round 4 re-record: stars decay one at a time after fifteen quiet seconds, never all at once.
-// Palmetto Heat — wanted level, 0 to 5 stars.
-// Crimes add heat; quiet time decays it. Listeners (HUD, cops) subscribe to
-// level changes. The rules live in config.js; this module only keeps score.
-// Round 4: reckless driving (a drift or a horn blast in a cop's face) adds its own star.
-// New in this round: reckless driving counts too — drifting past a cop car
-// or leaning on the horn in their face adds a star of its own.
+// Stars rise per crime and drive how many cops spawn; they only cool off once no unit can
+// see you (POLICE.evadeSeconds). Reckless driving in a cop's face adds a star of its own.
 
-import { WANTED_RULES, clamp } from './config.js';
+import { WANTED_RULES, POLICE, clamp } from './config.js';
 
 let stars = 0;
 let quietTimer = 0;
@@ -62,9 +56,12 @@ export function updateWanted(dt, committingCrime) {
   }
   if (stars === 0) return;
   quietTimer += dt;
-  if (quietTimer >= WANTED_RULES.decaySeconds) {
+  if (quietTimer >= POLICE.evadeSeconds) {
     setStars(stars - 1);
   }
 }
 
 export function clearWanted() { setStars(0); }
+
+// 0..1 progress toward losing the next star while out of sight.
+export function evadeProgress() { return stars > 0 ? quietTimer / POLICE.evadeSeconds : 0; }

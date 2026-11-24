@@ -1,11 +1,6 @@
 // A 100 BPM synthwave loop whose mood (day, night, chase) follows the wanted level and the clock.
-// Round 4 re-record: the loop is 64 sixteenth-note steps — four bars of A minor, bass, arp, pad and kick.
-// Palmetto Heat — synthwave BGM, synthesized live, no audio files.
-// A 100 BPM loop in A minor: saw bass on the eighths, a square arp on the
-// sixteenths, a slow pad under Am–F–C–G, and a sine kick on the beat. A
-// lookahead scheduler (25 ms tick, 0.12 s ahead) keeps it tight. M toggles
-// it; the mix darkens at night and tightens in a chase.
-// Round 4: the mood filter darkens at night (900 Hz) and opens up in a chase (2600 Hz).
+// A minor: saw bass, square arp, Am-F-C-G pad, sine kick; lookahead scheduler (25 ms tick,
+// 0.12 s ahead). M toggles it; the filter darkens at night (900 Hz) and opens in a chase (2600 Hz).
 
 import { ensureAudioContext } from './audio.js';
 

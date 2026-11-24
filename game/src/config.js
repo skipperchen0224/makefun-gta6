@@ -1,9 +1,5 @@
-// One place for every number the game tunes: world, cars, drift, armour, weather, wanted, missions.
-// Round 4 re-record: one seed drives every random choice, so a screenshot run is reproducible from ?seed=.
-// Palmetto Heat — global tuning and mission table.
-// One place for every number a designer would tweak: world size, car feel,
-// wanted rules, payouts and the six story missions Mama Rosa hands out.
-// Round 4: PALETTE.windowLit/windowDark double as the night window-glow colours.
+// One place for every number the game tunes: world, cars, traffic, police, weapons, pickups,
+// drift, armour, weather, wanted, the six missions and the story lines between them.
 
 export const WORLD = {
   size: 480,          // playable square, metres, centred on (0, 0)
@@ -106,7 +102,9 @@ export const KEYS = {
   enterCar: 'KeyF',
   shoot: 'Mouse0',
   sprint: 'ShiftLeft',
-  restart: 'KeyR',
+  restart: 'KeyR',     // restart after BUSTED / WASTED; reload while playing
+  pause: 'KeyP',
+  newGame: 'KeyN',    // on the title screen: wipe the save and start over
   swapChar: 'KeyQ',   // Lucia <-> Jason
   music: 'KeyM',      // synthwave BGM on / off
   wave: 'KeyT',       // wave at other drivers (multiplayer)
@@ -145,3 +143,41 @@ export function mulberry32(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+// Round 5: traffic lanes and density, kept near the player.
+export const TRAFFIC = {
+  cars: 18,
+  peds: 28,
+  lane: 2.6,          // metres right of the road centre line
+  turnChance: 0.35,   // chance a car turns at an intersection
+  recycle: 190,       // metres: farther than this and a car/ped respawns near you
+};
+
+// Police tuning for the Round 5 chase AI.
+export const POLICE = {
+  sightRange: 75,     // metres a cop can see you, line of sight permitting
+  evadeSeconds: 8,    // out of sight this long and one star drops
+  roadblockAt: 3,     // stars before units set up roadblocks ahead of you
+  roadblockEvery: 22, // seconds between roadblocks
+  bustSeconds: 2,     // boxed in, stopped, a cop at the door this long = BUSTED
+};
+
+// World pickups: touch to collect, they come back after `respawn` seconds.
+export const PICKUP_KINDS = {
+  health: { color: 0x37c978, amount: 40, label: 'Health +40' },
+  armor: { color: 0x4da3ff, amount: 50, label: 'Armour +50' },
+  ammo: { color: 0xffd34d, amount: 1, label: 'Ammo restocked' },
+  cash: { color: 0x7ee787, amount: 150, label: 'Cash +$150' },
+};
+export const PICKUP_RESPAWN = 45;
+
+// Round 5 story: Mama Rosa calls after every job; the prologue plays on a new game.
+export const STORY = {
+  0: ['MAMA ROSA', 'Lucia, Jason — Palmetto City runs on favours, and you two owe me plenty. Come by the diner. Press E.'],
+  1: ['MAMA ROSA', 'Good. The package is ours. The Vargas crew will want it back — get it to the pier before they do.'],
+  2: ['MAMA ROSA', 'The pier boys say a courier has been selling our routes. Follow him. Do not let him see you.'],
+  3: ['JASON', 'The courier cracked: Vargas has a cop on the payroll. The SMG is in the trunk now — 2 to draw it.'],
+  4: ['MAMA ROSA', 'You lost the heat. Now take the fight to them — the Vargas crew is holed up in the alley. Shotgun is yours: 3.'],
+  5: ['LUCIA', 'Vargas is finished, but his cop called in everyone. One last run, Jason. Five stars. Safehouse or bust.'],
+  6: ['MAMA ROSA', 'You made it. Palmetto City is ours now — the streets, the money, the heat. Enjoy the view.'],
+};

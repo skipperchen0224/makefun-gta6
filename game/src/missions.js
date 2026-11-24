@@ -1,12 +1,6 @@
 // Six story jobs in order, each with its own win and fail rule and a cash reward.
-// Round 4 re-record: the loop feeds positions and targets in as context, and completion comes back as events.
-// Palmetto Heat — the six story missions.
-// Each mission is a small state machine: idle -> active -> done | failed.
-// The game loop feeds it a context object (positions, speeds, targets) and
-// it answers with the current objective text and completion events. Each
-// mission now has a per-lead brief: Lucia and Jason get the same job from
-// Mama Rosa, but they hear it differently.
-// Round 4: each mission's brief is pitched differently to Lucia and to Jason.
+// Each is a small state machine (idle -> active -> done | failed) fed a context object by
+// the game loop; every brief is pitched differently to Lucia and to Jason.
 
 import * as THREE from 'three';
 import { MISSIONS, ECONOMY, PLACES } from './config.js';

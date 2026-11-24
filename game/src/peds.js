@@ -1,14 +1,9 @@
 // Pedestrians wander the sidewalks, flee gunfire, and form the hostile squads some missions need.
-// Round 4 re-record: a downed pedestrian stays down — hitPed answers 'down' once and never again.
-// Palmetto Heat — pedestrians.
-// Sidewalk walkers with a tiny state machine (walk / flee / down). They dodge
-// the player's car, scatter at gunfire, and remember nothing between frames
-// except their own heading and speed. In the rain they hurry: walk speed
-// rises and they flee farther from gunfire and horns.
-// Round 4: rain makes walkers hurry and flee farther — the same scare, wetter streets.
+// Walk / flee / down state machine; rain makes walkers hurry and flee farther. Civilians are
+// recycled near the player; hostile crew close in and hold their ground to shoot.
 
 import * as THREE from 'three';
-import { WORLD, mulberry32 } from './config.js';
+import { WORLD, TRAFFIC, clamp, mulberry32 } from './config.js';
 import { resolveCircleCollision, snapToRoad } from './city.js';
 
 const peds = [];
@@ -49,6 +44,7 @@ export function initPeds(scene, seed = 5) {
 export function spawnPed(x, z, hostile = false) {
   const mesh = buildPedMesh(SHIRT_COLORS[Math.floor(rng() * SHIRT_COLORS.length)], hostile);
   mesh.position.set(x, 0, z);
+  mesh.traverse((o) => { o.castShadow = true; });
   sceneRef.add(mesh);
   const ped = {
     mesh,
@@ -73,8 +69,25 @@ export function spawnPeds(count = 16) {
     const off = (rng() < 0.5 ? -1 : 1) * (7 + rng() * 3);
     const x = snapped.axis === 'x' ? snapped.x + (rng() * 2 - 1) * half * 0.2 : snapped.x + off;
     const z = snapped.axis === 'z' ? snapped.z + (rng() * 2 - 1) * half * 0.2 : snapped.z + off;
-    spawnPed(x, z);
+    spawnPed(x, z).heading = snapped.axis === 'x' ? (rng() < 0.5 ? 1 : -1) * Math.PI / 2 : (rng() < 0.5 ? 0 : Math.PI);
   }
+}
+
+// Round 5: a civilian who wanders out past TRAFFIC.recycle reappears on a
+// sidewalk 60-110 m from the player, so the streets around you stay busy.
+function recyclePed(p, px, pz) {
+  const half = WORLD.size / 2 - 20;
+  const a = rng() * Math.PI * 2;
+  const r = 60 + rng() * 50;
+  const s = snapToRoad(clamp(px + Math.cos(a) * r, -half, half), clamp(pz + Math.sin(a) * r, -half, half));
+  const off = (rng() < 0.5 ? -1 : 1) * (7 + rng() * 1.5);
+  p.x = s.axis === 'x' ? s.x : s.x + off;
+  p.z = s.axis === 'x' ? s.z + off : s.z;
+  p.heading = s.axis === 'x' ? (rng() < 0.5 ? 1 : -1) * Math.PI / 2 : (rng() < 0.5 ? 0 : Math.PI);
+  p.state = 'walk';
+  p.hp = 1;
+  p.mesh.rotation.x = 0;
+  p.mesh.position.y = 0;
 }
 
 export function spawnHostileSquad(x, z, count = 5) {
@@ -90,7 +103,7 @@ export function spawnHostileSquad(x, z, count = 5) {
 export function scarePeds(x, z, radius = 45) {
   const r = raining ? radius * 1.3 : radius;
   for (const p of peds) {
-    if (p.state === 'down') continue;
+    if (p.state === 'down' || p.hostile) continue;
     const dx = p.x - x;
     const dz = p.z - z;
     if (dx * dx + dz * dz < r * r) {
@@ -104,15 +117,25 @@ export function scarePeds(x, z, radius = 45) {
 export function updatePeds(dt, playerX, playerZ, playerInCar, carSpeed) {
   const hurry = raining ? 1.6 : 1;
   for (const p of peds) {
+    if (!p.hostile && Math.hypot(p.x - playerX, p.z - playerZ) > TRAFFIC.recycle) recyclePed(p, playerX, playerZ);
     if (p.state === 'down') continue;
     let speed = p.speed * hurry;
+    if (p.hostile) {
+      // Crew stand their ground: close to 14 m, then hold and shoot (main.js fires).
+      const d = Math.hypot(playerX - p.x, playerZ - p.z);
+      p.heading = Math.atan2(playerX - p.x, playerZ - p.z);
+      speed = d > 14 && d < 70 ? 3.2 : 0;
+    }
     if (p.state === 'flee') {
       speed = 4.5 * hurry;
       p.fleeTime -= dt;
-      if (p.fleeTime <= 0) p.state = 'walk';
-    } else if (p.state === 'walk') {
-      // Meander: small random heading drift, and dodge a fast car ahead.
-      if (rng() < dt * 0.25) p.heading += (rng() - 0.5) * 1.2;
+      if (p.fleeTime <= 0) {
+        p.state = 'walk';
+        p.heading = Math.round(p.heading / (Math.PI / 2)) * (Math.PI / 2);
+      }
+    } else if (p.state === 'walk' && !p.hostile) {
+      // Stroll along the sidewalk, now and then turn back; dodge a fast car ahead.
+      if (rng() < dt * 0.04) p.heading += Math.PI;
       if (playerInCar && Math.abs(carSpeed) > 8) {
         const dx = p.x - playerX;
         const dz = p.z - playerZ;

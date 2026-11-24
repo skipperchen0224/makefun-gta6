@@ -1,12 +1,6 @@
 // All effects are synthesized with WebAudio oscillators and filtered noise; the game ships no sound files.
-// Round 4 re-record: the engine hum follows speed, the siren follows stars — both are oscillators, not samples.
-// Palmetto Heat — synthesized sound, no audio files.
-// Everything is WebAudio oscillators and filtered noise, built lazily on the
-// first user gesture so headless screenshot runs stay silent and error-free.
-// Round 4: the rain bed and the engine hum share this module's master gain.
-// New in this round: a car horn, a character-swap sting, a tyre-skid hiss
-// for drifting, a looping rain bed, and ensureAudioContext() so the BGM
-// sequencer (bgm.js) can share this context and master gain.
+// Built lazily on the first user gesture, so headless screenshot runs stay silent. Horn, swap sting,
+// tyre skid, rain bed and engine hum share one master gain with the BGM (ensureAudioContext).
 
 let ctx = null;
 let master = null;

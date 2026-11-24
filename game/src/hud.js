@@ -1,12 +1,6 @@
 // Cash, health, armour, stars, clock, mission text and the 2D minimap all live on plain DOM.
-// Round 4 re-record: the minimap draws roads, sea, objective, traffic, cops and the player triangle every frame.
-// Palmetto Heat — HUD: DOM panels plus a 2D minimap canvas.
-// All elements are created here from the static shells in index.html, so the
-// page itself stays small and the HUD logic lives in one place. This round
-// adds the GTA-style extras: an armour bar under health, a character chip
-// with the in-game clock and weather, a live drift-score readout, and a
-// multiplayer badge for lobby play.
-// Round 4: the minimap draws the objective gold, cops flashing, the player green.
+// Also: lead chip, drift score, weapon/ammo, car health, story cards, pause and lobby badge.
+// The minimap draws the objective gold, cops flashing, pickups and the player green.
 
 let el = {};
 let minimap = null;
@@ -38,6 +32,12 @@ export function initHud() {
     weather: document.getElementById('hud-weather'),
     drift: document.getElementById('hud-drift'),
     mp: document.getElementById('hud-mp'),
+    weapon: document.getElementById('hud-weapon'),
+    carhp: document.getElementById('hud-carhp'),
+    carhpFill: document.getElementById('carhp-fill'),
+    story: document.getElementById('hud-story'),
+    paused: document.getElementById('hud-paused'),
+    titleSave: document.getElementById('title-save'),
   };
   minimap = document.getElementById('minimap');
   if (minimap) mctx = minimap.getContext('2d');
@@ -70,6 +70,42 @@ export function setStars(n) {
   lastStars = n;
   el.stars.textContent = '★'.repeat(n) + '☆'.repeat(5 - n);
   el.stars.classList.toggle('hot', n >= 3);
+}
+
+// Round 5: stars flash pale blue while no cop can see you and they are about to drop.
+export function setEvading(on) {
+  if (el.stars) el.stars.classList.toggle('evading', on);
+}
+
+export function setWeapon(text) {
+  if (el.weapon && el.weapon.textContent !== text) el.weapon.textContent = text;
+}
+
+// Car damage bar, shown only while driving.
+export function setCarHealth(hp) {
+  if (!el.carhp) return;
+  el.carhp.classList.toggle('show', hp !== null);
+  if (hp !== null) el.carhpFill.style.width = `${Math.max(0, Math.min(100, hp))}%`;
+}
+
+let storyTimer = null;
+export function showStory(speaker, text, ms = 7000) {
+  if (!el.story) return;
+  el.story.innerHTML = '';
+  const b = document.createElement('b');
+  b.textContent = speaker;
+  el.story.append(b, document.createTextNode(text));
+  el.story.classList.add('show');
+  if (storyTimer) clearTimeout(storyTimer);
+  storyTimer = setTimeout(() => el.story.classList.remove('show'), ms);
+}
+
+export function showPaused(on) {
+  if (el.paused) el.paused.classList.toggle('show', on);
+}
+
+export function setTitleSave(text) {
+  if (el.titleSave) el.titleSave.textContent = text;
 }
 
 export function setMission(text) {
