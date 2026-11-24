@@ -271,7 +271,9 @@ export function updateCops(dt, stars, player, onArrest, onCopShot) {
       }
     }
   }
-  return seen || !!heli;
+  // The helicopter sees you unless a building stands between its ground track and you.
+  if (heli && !segmentBlocked(heli.position.x, heli.position.z, player.x, player.z)) seen = true;
+  return seen;
 }
 
 // A cop car the player shot: damage it, maybe kill it (and raise heat).
