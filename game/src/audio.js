@@ -85,6 +85,8 @@ export function noiseBurst(dur = 0.18, cutoff = 1200, vol = 0.5) {
 }
 
 export function playGunshot() { noiseBurst(0.14, 2500, 0.55); blip(140, 0.06, 'sawtooth', 0.2); }
+// Round 5: reload click-clack — two short metallic ticks 0.4 s apart.
+export function playReload() { blip(880, 0.05, 'square', 0.18); setTimeout(() => blip(620, 0.07, 'square', 0.2), 380); }
 export function playPickup() { blip(660, 0.09, 'sine', 0.3); setTimeout(() => blip(990, 0.12, 'sine', 0.3), 90); }
 export function playMissionDone() { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => blip(f, 0.14, 'triangle', 0.3), i * 110)); }
 export function playFail() { [330, 262, 196].forEach((f, i) => setTimeout(() => blip(f, 0.18, 'sawtooth', 0.22), i * 140)); }

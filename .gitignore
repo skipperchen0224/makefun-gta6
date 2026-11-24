@@ -1,6 +1,7 @@
 out/
 *.log
 .DS_Store
+# Round 5: dossier build outputs stay local, like the staging PNGs.
 # Round 4: staging PNGs before they are converted to dossier JPEGs
 screenshots/*.png
 # Staging PNGs stay local; only the converted dossier JPEGs are committed.

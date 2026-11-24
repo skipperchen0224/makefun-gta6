@@ -1,4 +1,5 @@
 // Serves game/ over HTTP and runs the raw WebSocket lobby on the same port, no dependencies.
+// Round 5 re-record: the lobby and the static files still share one port, no accounts, no deps.
 // Round 4 re-record: the lobby speaks raw WebSocket frames — no ws dependency, no accounts.
 // Palmetto Heat — tiny static server + WebSocket lobby for local playtesting.
 // Serves game/ on http://localhost:8080 (or --port <n>) and, on the same

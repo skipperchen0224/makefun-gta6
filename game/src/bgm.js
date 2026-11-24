@@ -1,4 +1,5 @@
 // A 100 BPM synthwave loop whose mood (day, night, chase) follows the wanted level and the clock.
+// Round 5 re-record: the chase mood now also follows gunfire — a shootout tightens the mix.
 // Round 4 re-record: the loop is 64 sixteenth-note steps — four bars of A minor, bass, arp, pad and kick.
 // Palmetto Heat — synthwave BGM, synthesized live, no audio files.
 // A 100 BPM loop in A minor: saw bass on the eighths, a square arp on the

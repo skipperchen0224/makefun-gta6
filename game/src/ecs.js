@@ -1,4 +1,5 @@
 // The particle pool: smoke puffs and impact sparks, spawned and recycled every frame.
+// Round 5 re-record: muzzle flashes ride the same pool — one Points cloud, one draw call.
 // Round 4 re-record: smoke, sparks and splashes are the only particle effects, all stepped by runParticleSystem.
 // Palmetto Heat — a tiny entity-component-system.
 // The older modules each own their objects; new effects go through this

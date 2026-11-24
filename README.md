@@ -13,6 +13,8 @@ original creations; nothing here is taken from Rockstar.
 
 Round 4 adds lit windows and street lamps after dark, and instanced city props that cut draw calls.
 
+Round 5 adds three guns with magazines and reloads, street-corner supply caches, a crew that shoots back, police that route around buildings and set roadblocks, 18 cars and 28 pedestrians, a seven-card story arc, sun shadows, night light halos, streak rain, and a combat screenshot that replaces the old BUSTED frame.
+
 **Play now:** https://skipperchen0224.github.io/makefun-gta6/game/index.html
 
 Prefer to run it yourself? Serve the `game/` folder locally
@@ -58,7 +60,10 @@ nearby. Everything after that is up to you.
   sends the nearest unit to investigate.
 - **Fight on foot** — click to shoot, with recoil and a muzzle
   tracer. Pedestrians flee when shots ring out, and police cars can
-  be knocked out of the chase.
+  be knocked out of the chase. **Round 5:** three guns (pistol, SMG,
+  shotgun — keys 1/2/3, R reloads), chest-high fire with 12° aim
+  assist, glowing tracers, and supply caches that keep the fight fed.
+  The alley crew shoots back, and running a ped over counts too.
 - **Armour** — damage eats your armour bar first, health second.
   Stay quiet for ten seconds and the armour starts growing back.
 - **Weather and day/night** — a 24-hour clock runs over eight real
@@ -100,7 +105,10 @@ nearby. Everything after that is up to you.
 | H | Horn (in a car) |
 | T | Wave (multiplayer lobby) |
 | Wheel | Zoom the chase camera |
-| R | Restart after BUSTED / WASTED |
+| 1/2/3 | Switch weapon (pistol / SMG / shotgun) |
+| R | Reload (on foot, playing) / restart (BUSTED / WASTED) |
+| P | Pause / resume |
+| N | New game (title screen) |
 
 ## Under the hood
 

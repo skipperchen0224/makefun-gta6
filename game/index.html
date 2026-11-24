@@ -5,6 +5,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23ff7a1a'/%3E%3Ctext x='16' y='23' font-size='20' font-weight='900' text-anchor='middle' fill='%23fff'%3EP%3C/text%3E%3C/svg%3E">
 <title>Palmetto Heat — Open-World Crime Game</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -42,6 +43,20 @@
   #hud-drift { position: absolute; right: 16px; bottom: 100px; font-size: 22px; font-weight: 800;
     color: #ffd34d; text-shadow: 0 2px 8px rgba(0,0,0,0.9); opacity: 0; transition: opacity 0.15s ease; }
   #hud-drift.show { opacity: 1; }
+  /* Round 5: weapon readout, car health bar, story dialogue card. */
+  #hud-weapon { position: absolute; right: 16px; bottom: 146px; font-size: 17px; font-weight: 700;
+    color: #ffd34d; text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
+  #hud-carhealth { position: absolute; right: 16px; bottom: 122px; width: 180px; height: 10px;
+    padding: 0; overflow: hidden; opacity: 0; transition: opacity 0.2s ease; }
+  #hud-carhealth.show { opacity: 1; }
+  #carhealth-fill { height: 100%; width: 100%; background: #37c978; border-radius: 6px; }
+  #hud-dialogue { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%);
+    max-width: 560px; font-size: 16px; line-height: 1.5; background: rgba(10,14,18,0.78);
+    border: 1px solid rgba(255,211,77,0.5); border-radius: 10px; padding: 12px 18px;
+    opacity: 0; transition: opacity 0.3s ease; text-align: left; }
+  #hud-dialogue.show { opacity: 1; }
+  #dialogue-who { color: #ffd34d; font-weight: 800; margin-right: 8px; }
+  #save-summary { margin-top: 10px; font-size: 14px; color: rgba(255,255,255,0.8); }
   #hud-mp { position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
     font-size: 13px; font-weight: 700; color: #7ee787; background: rgba(10,14,18,0.62);
     border: 1px solid rgba(126,231,135,0.5); padding: 5px 12px; border-radius: 999px;
@@ -109,6 +124,9 @@
   <canvas id="minimap" width="168" height="168"></canvas>
   <div id="hud-speed">0 km/h</div>
   <div id="hud-drift">DRIFT +0</div>
+  <div id="hud-weapon">Pistol · 12 / 72</div>
+  <div id="hud-carhealth" class="hud-panel"><div id="carhealth-fill"></div></div>
+  <div id="hud-dialogue"><span id="dialogue-who"></span><span id="dialogue-line"></span></div>
   <div id="hud-help">Click to start</div>
   <div id="hud-message"></div>
   <div id="hud-banner"></div>
@@ -120,10 +138,12 @@
   <p>An open-world crime game. Steal cars, outrun the Palmetto PD, run six jobs
      for Mama Rosa, and make the city yours — on foot or behind the wheel.</p>
   <div class="leads">TWO LEADS &middot; LUCIA THE WHEELWOMAN &amp; JASON THE HEAVY &middot; PRESS Q TO SWAP</div>
+  <div id="save-summary"></div>
   <div class="cta">CLICK TO START</div>
   <div class="keys">WASD move / drive &nbsp;&middot;&nbsp; SPACE handbrake drift &nbsp;&middot;&nbsp; F enter car
     &nbsp;&middot;&nbsp; E start mission &nbsp;&middot;&nbsp; CLICK shoot &nbsp;&middot;&nbsp; SHIFT sprint<br>
-    Q swap lead &nbsp;&middot;&nbsp; M synthwave music &nbsp;&middot;&nbsp; H horn &nbsp;&middot;&nbsp; WHEEL zoom camera</div>
+    Q swap lead &nbsp;&middot;&nbsp; M synthwave music &nbsp;&middot;&nbsp; H horn &nbsp;&middot;&nbsp; WHEEL zoom camera<br>
+    1/2/3 weapons &nbsp;&middot;&nbsp; R reload &nbsp;&middot;&nbsp; P pause &nbsp;&middot;&nbsp; N new game</div>
 </div>
 
 <div id="end-screen" class="hidden">

@@ -1,28 +1,23 @@
-// Six story jobs in order, each with its own win and fail rule and a cash reward.
-// Round 4 re-record: the loop feeds positions and targets in as context, and completion comes back as events.
-// Palmetto Heat — the six story missions.
-// Each mission is a small state machine: idle -> active -> done | failed.
-// The game loop feeds it a context object (positions, speeds, targets) and
-// it answers with the current objective text and completion events. Each
-// mission now has a per-lead brief: Lucia and Jason get the same job from
-// Mama Rosa, but they hear it differently.
-// Round 4: each mission's brief is pitched differently to Lucia and to Jason.
-
+// Six story jobs in order, each with its own win and fail rule and a cash
+// reward. Round 5: the Street Sweep crew fights back — they close to 14 m,
+// hold, and shoot on a 1.1–1.9 s clock, only with a clear line of sight.
+// A fast car is harder to hit than a walker on foot.
 import * as THREE from 'three';
 import { MISSIONS, ECONOMY, PLACES } from './config.js';
+import { hasLineOfSight } from './city.js';
 
 let sceneRef = null;
 let beacon = null;
 let beaconRing = null;
-let activeId = 0;        // 0 = none active
-let state = 'idle';      // idle | active | done | failed
+let activeId = 0;
+let state = 'idle';
 let timer = 0;
 let tailTime = 0;
 let targetCar = null;
 let squadLeft = 0;
+let squad = [];
 let listeners = [];
 
-// How Mama Rosa pitches each job to each lead. Same job, different ears.
 const BRIEFS = {
   lucia: {
     1: 'Lucia — the diner package, quick and quiet. You drive, I worry.',
@@ -75,6 +70,7 @@ export function initMissions(scene) {
   tailTime = 0;
   targetCar = null;
   squadLeft = 0;
+  squad = [];
   listeners = [];
 }
 
@@ -100,10 +96,11 @@ export function startMission(id, ctx) {
   timer = m.timeLimit;
   tailTime = 0;
   squadLeft = 0;
+  squad = [];
   targetCar = null;
   if (m.kind === 'shoot' && ctx.spawnSquad) {
     const place = PLACES[m.place];
-    const squad = ctx.spawnSquad(place.x, place.z, 5);
+    squad = ctx.spawnSquad(place.x, place.z, 5);
     squadLeft = squad.length;
   }
   if (m.kind === 'tail' && ctx.spawnTailTarget) {
@@ -138,6 +135,7 @@ function finish(done, reason) {
   emit({ type: done ? 'complete' : 'fail', mission: m, reward, reason });
   const finishedId = activeId;
   activeId = 0;
+  squad = [];
   return { finishedId, done, reward };
 }
 
@@ -147,7 +145,6 @@ function dist2(ax, az, bx, bz) {
   return dx * dx + dz * dz;
 }
 
-// ctx: { px, pz, inCar, speed, stars, squadLeft, targetCar, dt }
 export function updateMissions(dt, ctx) {
   if (state !== 'active') return null;
   const m = missionById(activeId);
@@ -194,8 +191,38 @@ export function updateMissions(dt, ctx) {
   return null;
 }
 
-// The HUD reads this every frame: short objective line + progress.
-// Pass the active lead so the line speaks in their voice.
+// Round 5: the crew shoots back. Each hostile closes to 14 m, holds, and
+// fires every 1.1–1.9 s — but only with a line of sight, and a fast car is
+// a harder target (30%) than a walker (55%). `onShot(hit, ped)` draws the
+// tracer in main.js and applies damage when hit is true.
+export function updateSquadFire(dt, player, onShot) {
+  if (state !== 'active' || missionById(activeId)?.kind !== 'shoot') return;
+  const fastCar = player.inCar && Math.abs(player.speed || 0) > 12;
+  for (const ped of squad) {
+    if (!ped || ped.state === 'down') continue;
+    const dx = player.x - ped.x;
+    const dz = player.z - ped.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 14) {
+      ped.heading = Math.atan2(dx, dz);
+      ped.x += Math.sin(ped.heading) * 3.5 * dt;
+      ped.z += Math.cos(ped.heading) * 3.5 * dt;
+      ped.mesh.position.set(ped.x, 0, ped.z);
+      ped.mesh.rotation.y = ped.heading;
+      continue;
+    }
+    ped.heading = Math.atan2(dx, dz);
+    ped.mesh.rotation.y = ped.heading;
+    ped.shotTimer -= dt;
+    if (ped.shotTimer > 0) continue;
+    ped.shotTimer = 1.1 + Math.random() * 0.8;
+    if (dist > 40) continue;
+    if (!hasLineOfSight(ped.x, ped.z, player.x, player.z)) continue;
+    const hit = Math.random() < (fastCar ? 0.3 : 0.55);
+    if (onShot) onShot(hit, ped);
+  }
+}
+
 export function objectiveText(doneList, charId = 'lucia') {
   if (state === 'active') {
     const m = missionById(activeId);

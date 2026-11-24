@@ -30,6 +30,7 @@ export function loadSave() {
       character: data.character === 'jason' ? 'jason' : 'lucia',
       armor: Number(data.armor) || 0,
       bestDrift: Number(data.bestDrift) || 0,
+      ammo: data.ammo && typeof data.ammo === 'object' ? data.ammo : null, // Round 5: weapon mags + reserves
     };
   } catch {
     return null;
@@ -47,6 +48,7 @@ export function writeSave(state) {
       character: state.character || 'lucia',
       armor: Math.floor(state.armor || 0),
       bestDrift: Math.floor(state.bestDrift || 0),
+      ammo: state.ammo || null, // Round 5: weapon mags + reserves, restored on load
       savedAt: new Date().toISOString(),
     }));
     return true;

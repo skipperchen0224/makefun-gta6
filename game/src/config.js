@@ -61,7 +61,8 @@ export const BGM = {
 
 export const WANTED_RULES = {
   maxStars: 5,
-  decaySeconds: 15,   // quiet time before one star drops
+  decaySeconds: 8,   // Round 5: unseen for this long and one star drops
+  loseSightSeconds: 8, // seconds with no cop seeing you before decay starts
   stealCar: 1,
   shoot: 1,
   hurtPed: 1,
@@ -70,7 +71,37 @@ export const WANTED_RULES = {
   reckless: 1,        // drifting past a cop car, or a horn blast in their face
   copShootAtStars: 3, // cops open fire at 3+ stars
   heliAtStars: 5,
+  roadblockEvery: 22, // seconds between roadblocks at 3+ stars
+  roadblockLifetime: 40, // seconds a roadblock stays up
 };
+
+// Round 5: three guns. `unlockMissions` = completed missions needed.
+export const WEAPONS = [
+  { id: 'pistol', name: 'Pistol', mag: 12, reserveMax: 72, damage: 34, interval: 0.28, pellets: 1, auto: false, reloadTime: 1.3, unlockMissions: 0 },
+  { id: 'smg', name: 'SMG', mag: 30, reserveMax: 150, damage: 18, interval: 0.09, pellets: 1, auto: true, reloadTime: 1.3, unlockMissions: 3 },
+  { id: 'shotgun', name: 'Shotgun', mag: 6, reserveMax: 30, damage: 13, interval: 0.9, pellets: 6, auto: false, reloadTime: 1.3, unlockMissions: 4 },
+];
+
+// Round 5: street-corner supply caches and drops.
+export const PICKUPS = {
+  fixedCount: 16,
+  respawnSeconds: 45,
+  dropLifetime: 30,
+  healthAmount: 40,
+  armorAmount: 50,
+  cashAmount: 150,
+};
+
+// Round 5: one story card per finished mission, prologue to finale.
+export const STORY = [
+  { who: 'Mama Rosa', line: 'You made it out of the plaza alive. That is the whole job, kid. The city is yours now — go take it.' },
+  { who: 'Mama Rosa', line: 'Package delivered, no police, no questions. You drive like your mother taught you. Almost.' },
+  { who: 'Lucia', line: 'The courier cracked. He talks too much when something fast follows him. We know where the crew meets now.' },
+  { who: 'Jason', line: 'Three stars and you still brought the car home. The department is going to remember your plates.' },
+  { who: 'Mama Rosa', line: 'The alley is quiet. The rival crew will think twice before parking on our street again.' },
+  { who: 'Lucia', line: 'Five stars, one car, one safehouse — and you are still breathing. Palmetto City is ours tonight.' },
+  { who: 'Mama Rosa', line: 'That is the last of them. Dinner is on the table, kid. You earned a seat at it.' },
+];
 
 export const ECONOMY = {
   startCash: 500,
@@ -111,6 +142,12 @@ export const KEYS = {
   music: 'KeyM',      // synthwave BGM on / off
   wave: 'KeyT',       // wave at other drivers (multiplayer)
   horn: 'KeyH',       // car horn; scares peds, annoys cops
+  weapon1: 'Digit1',  // Round 5: pistol
+  weapon2: 'Digit2',  // Round 5: SMG (unlocks after 3 missions)
+  weapon3: 'Digit3',  // Round 5: shotgun (unlocks after 4 missions)
+  reload: 'KeyR',     // Round 5: reload (playing only; R restarts when busted/wasted)
+  pause: 'KeyP',      // Round 5: pause / resume
+  newGame: 'KeyN',    // Round 5: new game from the title screen
 };
 
 // Sun-soaked Palmetto City palette: warm plaster, teal sea air, hot asphalt.

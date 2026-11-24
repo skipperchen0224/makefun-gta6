@@ -104,4 +104,10 @@ export function resetFrame() {
   mousePressed = false;
 }
 
+// Round 5: drop every held key when the game pauses, so nothing sticks.
+export function clearHeld() {
+  held.clear();
+  mouseHeld = false;
+}
+
 export function anyKeyPressed() { return pressed.size > 0 || mousePressed; }

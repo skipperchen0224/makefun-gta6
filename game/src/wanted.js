@@ -1,28 +1,24 @@
-// Stars rise per crime, decay after fifteen quiet seconds, and drive how many cops spawn.
-// Round 4 re-record: stars decay one at a time after fifteen quiet seconds, never all at once.
-// Palmetto Heat — wanted level, 0 to 5 stars.
-// Crimes add heat; quiet time decays it. Listeners (HUD, cops) subscribe to
-// level changes. The rules live in config.js; this module only keeps score.
-// Round 4: reckless driving (a drift or a horn blast in a cop's face) adds its own star.
-// New in this round: reckless driving counts too — drifting past a cop car
-// or leaning on the horn in their face adds a star of its own.
-
+// Wanted level, 0 to 5 stars. Crimes add heat; quiet time decays it.
+// Round 5: decay only starts after 8 straight seconds with no cop seeing
+// you — that is the lose-the-heat game. While you are unseen and wanted,
+// the stars flash blue. Listeners (HUD, cops) subscribe to level changes.
 import { WANTED_RULES, clamp } from './config.js';
 
 let stars = 0;
 let quietTimer = 0;
 let listeners = [];
+let evading = false;
 
 export function initWanted() {
   stars = 0;
   quietTimer = 0;
   listeners = [];
+  evading = false;
 }
 
 export function getStars() { return stars; }
-
 export function isWanted() { return stars > 0; }
-
+export function isEvading() { return evading; }
 export function onWantedChange(fn) { listeners.push(fn); }
 
 function setStars(n) {
@@ -54,15 +50,19 @@ export function addCrime(kind) {
 
 export function forceStars(n) { setStars(n); }
 
-// Call every frame: while the player stays clean, stars bleed away.
-export function updateWanted(dt, committingCrime) {
-  if (committingCrime) {
+// Call every frame. `seen` is true while any cop has eyes on the player.
+// Unseen for loseSightSeconds straight and one star drops, then the count
+// restarts — staying hidden is how you shake the heat.
+export function updateWanted(dt, committingCrime, seen = false) {
+  evading = stars > 0 && !seen && !committingCrime;
+  if (committingCrime || seen) {
     quietTimer = 0;
     return;
   }
   if (stars === 0) return;
   quietTimer += dt;
-  if (quietTimer >= WANTED_RULES.decaySeconds) {
+  if (quietTimer >= WANTED_RULES.loseSightSeconds) {
+    quietTimer = 0;
     setStars(stars - 1);
   }
 }

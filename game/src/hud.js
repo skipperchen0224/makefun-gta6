@@ -1,13 +1,7 @@
-// Cash, health, armour, stars, clock, mission text and the 2D minimap all live on plain DOM.
-// Round 4 re-record: the minimap draws roads, sea, objective, traffic, cops and the player triangle every frame.
-// Palmetto Heat — HUD: DOM panels plus a 2D minimap canvas.
-// All elements are created here from the static shells in index.html, so the
-// page itself stays small and the HUD logic lives in one place. This round
-// adds the GTA-style extras: an armour bar under health, a character chip
-// with the in-game clock and weather, a live drift-score readout, and a
-// multiplayer badge for lobby play.
-// Round 4: the minimap draws the objective gold, cops flashing, the player green.
-
+// Cash, health, armour, stars, clock, mission text and the 2D minimap all
+// live on plain DOM. Round 5 adds the weapon + ammo readout, the car health
+// bar while driving, the story dialogue card, blue flashing stars while
+// you are shaking the heat, and the save summary on the title screen.
 let el = {};
 let minimap = null;
 let mctx = null;
@@ -16,7 +10,10 @@ let lastArmor = -1;
 let lastChar = '';
 let lastClock = '';
 let lastWeather = '';
+let lastWeapon = '';
+let lastCarHp = -1;
 let messageTimer = null;
+let dialogueTimer = null;
 
 export function initHud() {
   el = {
@@ -38,6 +35,13 @@ export function initHud() {
     weather: document.getElementById('hud-weather'),
     drift: document.getElementById('hud-drift'),
     mp: document.getElementById('hud-mp'),
+    weapon: document.getElementById('hud-weapon'),
+    carHealth: document.getElementById('hud-carhealth'),
+    carHealthFill: document.getElementById('carhealth-fill'),
+    dialogue: document.getElementById('hud-dialogue'),
+    dialogueWho: document.getElementById('dialogue-who'),
+    dialogueLine: document.getElementById('dialogue-line'),
+    saveSummary: document.getElementById('save-summary'),
   };
   minimap = document.getElementById('minimap');
   if (minimap) mctx = minimap.getContext('2d');
@@ -54,7 +58,6 @@ export function setHealth(hp) {
   el.healthFill.style.background = pct > 50 ? '#37c978' : pct > 25 ? '#f5a623' : '#e5484d';
 }
 
-// Armour bar: blue, drains before health does. `max` is the lead's cap.
 export function setArmor(armor, max) {
   if (!el.armorFill) return;
   const pct = max > 0 ? Math.max(0, Math.min(100, (armor / max) * 100)) : 0;
@@ -72,6 +75,12 @@ export function setStars(n) {
   el.stars.classList.toggle('hot', n >= 3);
 }
 
+// Round 5: while no cop sees you, the stars flash blue — you are losing them.
+export function setStarsEvading(on) {
+  if (!el.stars) return;
+  el.stars.classList.toggle('evading', !!on);
+}
+
 export function setMission(text) {
   if (el.mission && el.mission.textContent !== text) el.mission.textContent = text;
 }
@@ -84,7 +93,6 @@ export function setHelp(text) {
   if (el.help) el.help.textContent = text;
 }
 
-// Character chip: "LUCIA · Wheelwoman" — updates on a Q swap.
 export function setCharacter(name, tag) {
   if (!el.character) return;
   const text = `${name} · ${tag}`;
@@ -107,7 +115,6 @@ export function setWeather(label) {
   el.weather.textContent = label;
 }
 
-// Drift score: shows while sliding, hides a beat after the slide ends.
 export function setDrift(score) {
   if (!el.drift) return;
   if (score > 0) {
@@ -118,7 +125,6 @@ export function setDrift(score) {
   }
 }
 
-// Multiplayer badge: hidden offline, "MP · 3 online" in a lobby.
 export function setMp(text) {
   if (!el.mp) return;
   if (text) {
@@ -127,6 +133,42 @@ export function setMp(text) {
   } else {
     el.mp.classList.remove('show');
   }
+}
+
+// Round 5: weapon readout, e.g. "SMG · 24 / 150" or "Pistol · RELOADING".
+export function setWeapon(name, mag, reserve, reloading) {
+  if (!el.weapon) return;
+  const text = reloading ? `${name} · RELOADING` : `${name} · ${mag} / ${reserve}`;
+  if (text === lastWeapon) return;
+  lastWeapon = text;
+  el.weapon.textContent = text;
+}
+
+// Round 5: the car health bar, only visible while driving.
+export function setCarHealth(hp, visible) {
+  if (!el.carHealth || !el.carHealthFill) return;
+  el.carHealth.classList.toggle('show', !!visible);
+  const key = Math.round(hp);
+  if (key === lastCarHp) return;
+  lastCarHp = key;
+  const pct = Math.max(0, Math.min(100, hp));
+  el.carHealthFill.style.width = `${pct}%`;
+  el.carHealthFill.style.background = pct > 50 ? '#37c978' : pct > 25 ? '#f5a623' : '#e5484d';
+}
+
+// Round 5: a story card after each finished mission.
+export function showDialogue(who, line, ms = 5200) {
+  if (!el.dialogue) return;
+  if (el.dialogueWho) el.dialogueWho.textContent = who;
+  if (el.dialogueLine) el.dialogueLine.textContent = line;
+  el.dialogue.classList.add('show');
+  if (dialogueTimer) clearTimeout(dialogueTimer);
+  dialogueTimer = setTimeout(() => el.dialogue.classList.remove('show'), ms);
+}
+
+export function setSaveSummary(text) {
+  if (!el.saveSummary) return;
+  el.saveSummary.textContent = text || '';
 }
 
 export function showMessage(text, ms = 2600) {
@@ -159,8 +201,6 @@ export function hideEnd() {
   if (el.end) el.end.classList.add('hidden');
 }
 
-// Minimap: 168px canvas, world 480m -> scale, player centred-ish (fixed north-up).
-// Dots: player green, traffic white, cops flashing blue/red, objective gold.
 export function drawMinimap(world) {
   if (!mctx || !minimap) return;
   const S = minimap.width;
@@ -169,7 +209,6 @@ export function drawMinimap(world) {
   mctx.clearRect(0, 0, S, S);
   mctx.fillStyle = '#20262e';
   mctx.fillRect(0, 0, S, S);
-  // Roads.
   mctx.strokeStyle = '#4a5058';
   mctx.lineWidth = 3;
   for (let c = -240; c <= 240; c += 40) {
@@ -180,10 +219,8 @@ export function drawMinimap(world) {
     const [x4, y4] = toMap(260, c);
     mctx.beginPath(); mctx.moveTo(x3, y3); mctx.lineTo(x4, y4); mctx.stroke();
   }
-  // Sea on the east edge.
   mctx.fillStyle = '#2e7fa8';
   mctx.fillRect(S / 2 + 240 * scale, 0, S, S);
-  // Objective marker.
   if (world.objective) {
     const [ox, oy] = toMap(world.objective.x, world.objective.z);
     mctx.fillStyle = '#ffd34d';
@@ -192,20 +229,17 @@ export function drawMinimap(world) {
     mctx.lineWidth = 2;
     mctx.beginPath(); mctx.arc(ox, oy, 9, 0, Math.PI * 2); mctx.stroke();
   }
-  // Traffic.
   mctx.fillStyle = '#e8e8e8';
   for (const c of world.traffic || []) {
     const [cx, cy] = toMap(c.x, c.z);
     mctx.fillRect(cx - 1.5, cy - 1.5, 3, 3);
   }
-  // Cops flash.
   const flash = Math.floor(performance.now() / 300) % 2 === 0;
   mctx.fillStyle = flash ? '#ff3333' : '#3388ff';
   for (const c of world.cops || []) {
     const [cx, cy] = toMap(c.x, c.z);
     mctx.beginPath(); mctx.arc(cx, cy, 3.5, 0, Math.PI * 2); mctx.fill();
   }
-  // Player: green triangle pointing along heading.
   const [px, py] = toMap(world.player.x, world.player.z);
   mctx.save();
   mctx.translate(px, py);

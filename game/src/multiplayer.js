@@ -1,4 +1,5 @@
 // Optional lobby client: sends position snapshots, receives other drivers, chat and waves.
+// Round 5 re-record: ghost drivers never carry weapons state — only position, lead and stars sync.
 // Round 4 re-record: snapshots go out ten times a second; ghosts are only drawn, never simulated.
 // Palmetto Heat — WebSocket multiplayer (optional, ?mp=1).
 // serve.ts runs a tiny lobby on the same port: no accounts, no deps, just
