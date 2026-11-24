@@ -396,18 +396,21 @@ export function segmentBlocked(ax, az, bx, bz) {
   const len = Math.hypot(bx - ax, bz - az);
   const n = Math.ceil(len / 4);
   for (let i = 1; i < n; i++) {
-    const x = ax + ((bx - ax) * i) / n;
-    const z = az + ((bz - az) * i) / n;
+    const t = i / n;
+    // Samples within 2 m of either end are skipped, so someone hugging a wall can see past it.
+    if (t * len < 2 || (1 - t) * len < 2) continue;
+    const x = ax + (bx - ax) * t;
+    const z = az + (bz - az) * t;
     for (const b of colliders) {
-      if (x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ && !inBox(b, ax, az) && !inBox(b, bx, bz)) return true;
+      if (inBox(b, x, z) && !inBox(b, ax, az) && !inBox(b, bx, bz)) return true;
     }
   }
   return false;
 }
 
-// Someone standing against (or inside) a box can still see out of it.
+// Someone standing inside a box (a plaza or landmark footprint) can still see out of it.
 function inBox(b, x, z) {
-  return x > b.minX - 1.5 && x < b.maxX + 1.5 && z > b.minZ - 1.5 && z < b.maxZ + 1.5;
+  return x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ;
 }
 
 // Round 5 road-grid navigation: the next point on the street grid that brings a
