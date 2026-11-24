@@ -14,6 +14,9 @@ let heli = null;
 let heliCone = null;
 let heliAngle = 0;
 let spawnCooldown = 0;
+// Intercept units are on top of the star quota for a while, so the cap doesn't cull them.
+let interceptExtra = 0;
+let interceptLeft = 0;
 // Round 5 roadblocks: pairs of parked cruisers across the road ahead of you at 3+ stars.
 const roadblocks = [];
 let roadblockTimer = 6;
@@ -158,6 +161,8 @@ export function getRoadblocks() { return roadblocks; }
 // Units sent to intercept: `count` cruisers on the streets ahead of the player,
 // within `spread` radians of their heading. Used when the heat jumps to 4 stars.
 export function spawnIntercept(player, count = 2, radius = 60, spread = 0.6) {
+  interceptExtra = count;
+  interceptLeft = 25;
   for (let i = 0; i < count; i++) {
     const a = Math.PI / 2 - (player.heading || 0) + (Math.random() * 2 - 1) * spread;
     spawnCopNear(player.x, player.z, a, radius * (0.6 + Math.random() * 0.4));
@@ -177,7 +182,8 @@ export function updateCops(dt, stars, player, onArrest, onCopShot) {
     spawnCopNear(player.x, player.z, Math.random() * Math.PI * 2);
     spawnCooldown = 2.5;
   }
-  if (cops.length > want) {
+  interceptLeft -= dt;
+  if (cops.length > want + (interceptLeft > 0 ? interceptExtra : 0)) {
     const extra = cops.pop();
     if (extra) {
       sceneRef.remove(extra.mesh);
